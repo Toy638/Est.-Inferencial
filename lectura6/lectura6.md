@@ -1,0 +1,56 @@
+- ANOVA
+  - Analisis de varianza
+    - Comparación simultanea de tres o más medias muestrales
+    - Hipotesis
+      - H0: El tiempo de ejecución medio para instancias de tamaño E, es igual para los tres algoritmos.
+      - Ha: El tiempo de ejecucion medio para instancias de tamaño E es diferente par al menos un algoritmo.
+    - De una Via
+      - Una unica variable independiente categórica
+        - Factor en el que los niveles definen los grupos que se estan comparando
+    - De dos Vias
+      - No abordado en el presente texto
+      - Permite
+        - Examinar simultaneamente efectos de dos variables independientes 
+        - Determinar si ambas interactúan.
+  - Condiciones Anova de una Vía
+    - La escala con que se mide la variable dependiente tiene las propiedades de una escala de intervalos iguales
+    - Las K muestras son obtenidas de manera aleatoria a independente desde la(s) poblaciones de origen
+    - Se puede suponer razzonablemente que las poblacion(es) de origen sigue(n) una distribucion normal
+    - Si las muestras provienen de mas de una poblacion estas tienen la misma varianza
+  - Procedimiento ANOVA de una via para muestras independientes
+    - Variabilidad
+      - Identidad Importante
+        - SST = SSbg + SSwg
+        - variabilidad entre grupos 
+    - Resultado
+      - ANOVA de 2 grupos(t-student)
+    - Resumen 
+      - 1. Calcular la suma de los cuadrados de las desviaciones para la muestra combinada (SST). 
+      - 2. Para cada grupo g, calcular la suma de los cuadrados de las desviaciones dentro de dicho grupo (SSg). 
+      - 3. Calcular la variabilidad entre grupos (SSbg). 
+      - 4. Calcular la variabilidad al interior de los grupos (SSwg). 
+      - 5. Calcular los grados de libertad (νT, νbg y νwg). 
+      - 6. Calcular las medias de las desviaciones cuadradas (MSbg y MSwg). 
+      - 7. Calcular el estadístico de prueba (F).
+      - 8. Obtener el valor p.
+    - EN R
+      - aov
+      - ezANOVA
+        - Ventajas
+          - realiza también prueba de homocedasticidad de LEVENE
+            - Hipotesis
+              - H0: Las varianzas de las k poblaciones desde donde se obtuvieron las muestras son iguales
+              - Ha: Al menos una de las poblaciones de origen tiene una varianza diferente a alguna de las otras poblaciones
+      - exPLot 
+        - Tamaño del efecto medido
+    - Analisis POST-HOC
+      - En caso de que se rechaze la hipótesis nula
+      - Correcciones
+        - Benferroni
+          - Conservadora
+        - Holm 
+        - HSD de TUKEY
+        - SCHEFFÉ
+          - Muy conservador
+          - Contrastes
+          - Combinaciones lineales

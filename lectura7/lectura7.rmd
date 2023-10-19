@@ -1,0 +1,131 @@
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+libraries <- c("dplyr", "ggpubr", "ez")
+
+lapply(libraries, function(package) {
+  if (!require(package, character.only = TRUE)) {
+    install.packages(package, dependencies = TRUE)
+    library(package, character.only = TRUE)
+  } else {
+    library(package, character.only = TRUE)
+  }
+})
+
+
+```
+
+
+- ANOVA de una vía para muestras correlacionadas
+  - Escenarios
+    - Diseño con medidas repetidas
+      - A cada sujeto se le toman medidas en las diferentes condiciones
+    - Diseño con bloques aleatorios
+      - Cada bloque contiene diferentes sujetos agrupados segun una determinada característica
+
+
+
+### EJEMPLO: 
+
+Supongamos que un estudiante debe comparar la eficiencia de cuatro algoritmos
+de ordenamiento:
+- Bubble sort
+- Quick sort
+- Radix sort
+- Merge sort
+
+H0: El tiempo de ejecución promedio es igual para los cuatro algoritmos
+H1: El tiempo de ejecución promedio es diferente para al menos uno de los algoritmos
+
+Sean mu_q, mu_b, mu_r, mu_m los tiempos de ejecución promedio de los cuatro algoritmos
+
+H0: mu_q = mu_b = mu_r = mu_m
+H1: Existe al menor un par(i,j) tal que mu_i != mu_j, con i,j = {q,b,r,m}
+es decir al menos un par difiere del resto.
+
+## Condiciones para usar ANOVA de una vía para muestras correlacionadas
+
+- 1. La escala con la que se mide la variable dependiente debe ser de intervalos iguales o razón
+- 2. Las mediciones son independientes al interior de cada grupo
+- 3. Se puede suponer razonablemente que las poblaciones de origen siguen una distribución normal.
+- 4. La matriz de covarianzas es esférica.
+
+
+Veamos ahora si el ejemplo cumple con las condiciones para usar ANOVA de una vía para muestras correlacionadas.
+
+- La primera se verifica puesto que el tiempo como toda magnitud física, tiene una escala de intervalos iguales.
+
+- La segunda se cumple ya que el enunciado dice que el ingeniero se encarga del cumplimiento de la segunda condición.
+
+- La tercera se verifica en los siguientes graficos Quantile-Quantile
+
+- La cuarta se verifica demostrandolo a través de la prueba de esfericidad de Mauchly, incluida en la función ezAnova del paquete ez.
+
+```{r }
+
+# Tomamos las mediciones de los cuatro algoritmos
+
+# Crear el data frame.
+
+    instancia <- factor(1:6)
+
+    Quicksort <- c(23.2, 22.6, 23.4, 23.3, 21.8, 23.9)
+
+    Bubblesort <- c(31.6, 29.3, 30.7, 30.8, 29.8, 30.3)
+
+    Radixsort <- c(30.1, 28.4, 28.7, 28.3, 29.9, 29.1)
+
+    Mergesort <- c(25.0, 25.7, 25.7, 23.7, 25.5, 24.7)
+
+    datos <- data.frame(instancia, Quicksort, Bubblesort, Radixsort, Mergesort)
+
+    # Llevar data frame a formato largo.
+    datos <- datos %>% pivot_longer(c("Quicksort", "Bubblesort", "Radixsort", "Mergesort"),
+                                    names_to = "algoritmo", values_to = "tiempo")
+
+    datos[["algoritmo"]] <- factor(datos[["algoritmo"]])
+
+    # Comprobcion de normalidad.
+
+    g <- ggqqplot(datos, x = "tiempo", y = "algoritmo", color = "algoritmo")
+    g <- g + facet_wrap(~ algoritmo)
+    g <- g + rremove("x.ticks") + rremove("x.text")
+    g <- g + rremove("y.ticks") + rremove("y.text")
+    g <- g + rremove("axis.title")
+
+    print(g)
+
+
+    # Procedimiento ANOVA con ezANOVA()
+
+
+    cat("\n \n Procedimiento ANOVA con ezANOVA() \n \n")
+
+    prueba2 <- ezANOVA(data = datos, dv = tiempo, within = algoritmo,  wid = instancia, return_aov = TRUE)
+
+    print(summary(prueba2$aov))
+    cat("\n \n EL resultado de la prueba de esfericidad de Mauchly es: \n \n")
+    print(prueba2[["Mauchly's Test for Sphericity"]])
+
+    cat("\n \n factores de corrección para cuando no se cumple la \n ")
+    cat(" condicion de esfericidad \n \n")
+    print(prueba2$'Sphericity Corrections')
+
+
+    # Grafico del tamaño del efecto
+    g2 <- ezPlot(data = datos, dv = tiempo, wid = instancia, within = algoritmo,y_lab = "Tiempo de ejecución [ms]" x = algoritmo)
+    print(g2)
+
+
+```
+
+
+
+
+
+
+
+
+

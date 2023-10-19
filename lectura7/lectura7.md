@@ -1,0 +1,14 @@
+- ANOVA de una vía para muestras correlacionadas
+  - Escenarios
+    - Diseño con medidas repetidas
+      - A cada sujeto se le toman medidas en las diferentes condiciones
+    - Diseño con bloques aleatorios
+      - Cada bloque contiene diferentes sujetos agrupados segun una determinada característica
+  - Condiciones para usar anova de una vía para muestras correlacionadas
+    - La escala con que se mide la variable dependiente tiene las propiedades de una escala de intervalos iguales.
+    - Las medidas son independientes al interior de cada grupo.
+    - Se puede suponer razonablemente que la(s) poblaciones de origen siguen una distribucion normal
+    - La matriz de varianzas-covarianzas es esférica.
+  - Procedimiento ANOVA DE UNA VÍA PARA MUESTRAS CORRELACIONADAS
+  - Procedimientos POST-HOC
+    - 
