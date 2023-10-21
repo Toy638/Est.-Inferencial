@@ -160,8 +160,13 @@ Intervalo de Confianza = \bar{x} ± (Z * SE)
 
 $$
 $$
+
 Nivel de confianza = 1 - \alpha
+
 $$
-
-
+# P Valor:  
+Probabilidad de observar datos al menos tan favorables como la muestra actual parala hipótesis alternativa, si la hipótesis nula es verdadera,
+un p-valor permite cuantificar cuán fuerte es la evidencia en contra de la hipótesis nula (y en favor de la hipótesis alternativa).
+Si el pvalor es mayor que el nivel de significancia (alpha) entonces puedo fallar en rechazar la hipótesis nula (ho), en cambio si es menor que el alpha, 
+puedo rechazar la ho en favor de la hipòtesis alternativa.
 
