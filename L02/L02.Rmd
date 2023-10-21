@@ -159,7 +159,9 @@ Intervalo de Confianza = \bar{x} ± (Z * SE)
 
 
 $$
-
+$$
+Nivel de confianza = 1 - \alpha
+$$
 
 
 
