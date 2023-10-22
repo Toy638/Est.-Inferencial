@@ -2,7 +2,7 @@
   - Error
     - I
       - rechazar H0 en favor de HA cuando H0 es en realidad verdadera.
-      - alpha   
+      - alpha 
     - II
       - no rechazar H0 en favor de HA cuando HA es en realidad verdadera.
       - ß
@@ -15,12 +15,11 @@
       - (1 - ß)
       - Probabilidad de correctamente rechazar H0, cuando es falsa.
 - Poder, Nivel de significacion y tamaño de la muestra
-  - Poder estadístico:
-    - Probabilidad de no cometer un error tipo II
+    -  Poder estadístico:
+       - Probabilidad de no cometer un error tipo II
     - Características
       - Poder aumenta cuando mayor es el tamaño del efecto. 
       - Si el tamaño del efecto disminuye el poder se aproxima al nivel de significación
       - alpha mas exigente, con tamaño constante de la muestra, hace que la curva de poder sea más baja para cualquier tamaño del efecto.
       - Muestra más grande, aumenta el poder, para cualquier tamaño del efecto.
-  - Tamaño del efecto
-    - 
+- Tamaño del efecto
