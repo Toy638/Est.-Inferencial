@@ -72,3 +72,43 @@
           - Bootstrapping para una muestra
             - Script 11.6: construcción de un intervalo de confianza para la media poblacional mediante bootstrapping.
             - Script 11.7: inferencia sobre la media de una muestra con bootstrapping.
+              - Contraste de hipotesis requiere generar la distribucion centrada en el valor nulo
+              - Se debe desplazar
+                - Restar distribucion bootstrap 
+          - Bootstrapping para dos muestras independientes
+            - Script 11.8: bootstraping para la diferencia de medias.
+            - Script 11.9: bootstraping para inferir acerca de la diferencia de medias.
+          - Bootstrapping para dos muestras pareadas
+            - Script 11.10: bootstraping para la media de las diferencias.
+            - Script 11.11: bootstraping para inferir acerca de la media de las diferencias.
+      - Pruebas de permutaciones
+        - Como la prueba es exacta, no es posible obtener un intervalo de confianza
+        - Tamaño de la muestra
+          - Recomandablemente pequeña
+          - Si es grande se toma muestra aleatoria de las permutaciones
+        - Contraste de hipotesis con 2 o mas muestras
+        - Simulaciones de montecarlo
+          - Procedimiento 
+            - Formular hipótesis y estadístico de interés θ.
+            - Realizar P permutaciones con muestreo sin reposición.
+            - Generar distribución bajo hipótesis nula.
+            - Calcular probabilidad de θ observado en distribución generada.
+          - Script 11.12: pruebas de permutaciones para variables numéricas.
+          - Script 11.13: prueba de permutaciones para muestras correlacionadas.
+---
+
+- Resouces
+  - [Distribución de la Media muestral](https://www.youtube.com/watch?v=ff6-YnGv6Gg)
+    - [Distribucion de muestreo de la media de la muestra](https://onlinestatbook.com/stat_sim/sampling_dist/)
+    - Se aproxima a una distribucion normal
+      - Analisis de kurtosis
+        - positivo: picudo
+        - negativo: alargado
+      - Sesgo (Skew)
+        - Positivo
+        - Negativo
+        - Cero
+    - La media de la distribucion muestral, es similar a la media de la distribucion original
+    - 
+
+

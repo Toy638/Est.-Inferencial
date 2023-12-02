@@ -295,6 +295,15 @@ print(distribucion_bootstrapES)
 
 Script 11.7: inferencia sobre la media de una muestra con bootstrapping.
 
+
+Supongamos ahora que Helen desea hacer una prueba de hipótesis para ver si el 
+tiempo promedio de ejecución del algoritmo para instancias del tamaño seleccionado
+es mayor a 75 milisegundos. Así, tenemos que:
+
+$ H_0  =  \mu = 75 [ms]$
+$ H_a  =  \mu > 75 [ms]$
+
+
 ```{r}
 library(boot)
 
