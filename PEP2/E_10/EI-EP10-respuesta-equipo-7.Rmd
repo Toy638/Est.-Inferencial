@@ -1,0 +1,225 @@
+---
+title: "EI-EP09-respuesta-equipo-7"
+author: "Branco García Santana"
+date: "2023-11-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyverse)
+library(ggpubr)
+library(ggplot2)
+library(tidyr)
+library(reshape2)
+library(caret)
+library(pROC)
+
+```
+
+Actividades:
+
+Para este ejercicio usaremos los datos de medidas anatómicas recolectados por Heinz et al. (2003) que ya conocimos en el ejercicio práctico anterior (disponibles en el archivo "EP09 Datos.csv"). Como en este case se requiere de una variable dicotómica, vamos a realizar lo siguiente:
+
+- Lectura de datos:
+
+```{r}
+datos <- read.csv2("EP09_Datos.csv", sep = ";")
+head(datos)
+```
+
+
+1. El equipo crea la variable IMC (índice de masa corporal) como el peso de una persona (en kilogramos) dividida por el cuadrado de su estatura (en metros).
+
+Peso -> Weight, Estatura -> Height -> cm
+
+```{r}
+# Crear la variable IMC
+datos$IMC <- datos$Weight / (datos$Height / 100)^2
+```
+
+2. Si bien esta variable se usa para clasificar a las personas en varias clases de estado nutricional (bajo peso, normal, sobrepeso, obesidad, obesidad mórbida), para efectos de este ejercicio, usaremos dos clases: sobrepeso (IMC ≥ 25,0) y no sobrepeso (IMC < 25,0).
+
+3. El equipo crea la variable dicotómica EN (estado nutricional) de acuerdo al valor de IMC de cada persona.
+
+```{r}
+# Sobrepeso: IMC >= 25.0
+# No sobrepeso: IMC < 25.0
+
+# Crear la variable dicotómica EN (estado nutricional)
+datos$EN <- ifelse(datos$IMC >= 25.0, "Sobrepeso", "No Sobrepeso")
+
+
+```
+
+
+Ahora podemos construir un modelo de regresión logística para predecir la variable EN, de acuerdo con las siguientes instrucciones:
+
+1. Definir la semilla a utilizar, que corresponde a los últimos cuatro dígitos del RUN (sin considerar el dígito verificador) del integrante de mayor edad del equipo.
+
+```{r}
+set.seed(8215)
+```
+
+2. Seleccionar una muestra de 90 mujeres (si la semilla es un número par) o 90 hombres (si la semilla es impar), asegurando que la mitad tenga estado nutricional “sobrepeso” y la otra mitad “no sobrepeso” en cada caso. Dividir esta muestra en dos conjuntos: los datos de 60 personas (30 con EN “sobrepeso”) para utilizar en la construcción de los modelos y 30 personas (15 con EN “sobrepeso”) para poder evaluarlos.
+
+
+```{r}
+datos_h <- datos[datos$Gender == 1, ] # Hombres
+
+h_sobrepeso = datos_h[datos_h$EN == "Sobrepeso",]
+h_no_sobrepeso = datos_h[datos_h$EN == "No Sobrepeso",]
+
+
+print(head(h_sobrepeso))
+print(head(h_no_sobrepeso))
+
+# Seleccionar 45 datos con sobrepeso y 45 datos sin sobrepeso
+muestra_h_sobrepeso <- h_sobrepeso[sample(1:nrow(h_sobrepeso), size = 45),]
+muestra_h_no_sobrepeso <- h_no_sobrepeso[sample(1:nrow(h_no_sobrepeso), size = 45),]
+
+muestra_h <- rbind(muestra_h_no_sobrepeso, muestra_h_sobrepeso)
+
+
+
+
+
+# Dividir en subconjuntos de 30 y 15
+subconjunto_30_sobrepeso <- muestra_h_sobrepeso[1:30, ]
+subconjunto_15_sobrepeso <- muestra_h_sobrepeso[31:45, ]
+
+subconjunto_30_no_sobrepeso <- muestra_h_no_sobrepeso[1:30, ]
+subconjunto_15_no_sobrepeso <- muestra_h_no_sobrepeso[31:45, ]
+
+# Combinar los subconjuntos  
+conjunto_final_60_entrenamiento <- rbind(subconjunto_30_sobrepeso, subconjunto_30_no_sobrepeso)
+conjunto_final_30_prueba <- rbind(subconjunto_15_sobrepeso, subconjunto_15_no_sobrepeso)
+
+
+
+#transformando a binario
+
+
+
+
+
+```
+Recordar las ocho posibles variables predictoras seleccionadas de forma aleatoria en el ejercicio anterior.
+
+
+
+```{r}
+
+# Ocho predictores aleatorios previos.
+predictores <- c( "Knees.diameter", "Bicep.Girth", "Chest.diameter", "Wrists.diameter", "Elbows.diameter", "Chest.depth", "Bitrochanteric.diameter", "Navel.Girth")
+
+# Se obtiene el resto de predictores.
+predictores_completo <- names(conjunto_final_60_entrenamiento)
+resto_predictores <- setdiff(predictores_completo, predictores)
+
+# Se analiza la correlación entre las variables, esto mediante gráficos de caja.
+for (var in resto_predictores) {
+  p <- ggplot(conjunto_final_60_entrenamiento, aes_string(x = "EN", y = var)) +
+    geom_boxplot() +
+    labs(title = paste("Boxplot of", var, "by EN"))
+  print(p)
+}
+
+
+```
+
+
+
+
+Seleccionar, de las otras variables, una que el equipo considere que podría ser útil para predecir la clase EN, justificando bien esta selección.
+
+```{r}
+
+  # Para seleccionar un variable observamos la diferencia de las medias.
+  
+  diferencias_medianas <- data.frame(variable = character(), diferencia = numeric())
+  
+  for (var in resto_predictores) {
+    # Verificamos si la variable es numérica
+    if (is.numeric(conjunto_final_60_entrenamiento[[var]])) {
+      # Calculamos las medianas por grupo para la variable actual
+      medianas <- conjunto_final_60_entrenamiento %>% 
+        group_by(EN) %>% 
+        summarize(mediana = median(!!sym(var), na.rm = TRUE)) %>%
+        na.omit() # Eliminamos los grupos con datos faltantes
+  
+      # Asegúrate de que hay al menos dos grupos con medianas no-NA
+      if (nrow(medianas) > 1) {
+        # Calculamos la diferencia de las medianas
+        diferencia <- abs(medianas$mediana[1] - medianas$mediana[2])
+  
+        # Agregamos los resultados a nuestro dataframe
+        diferencias_medianas <- rbind(diferencias_medianas, data.frame(variable = var, diferencia = diferencia))
+      }
+    }
+  }
+  
+  # Ordenamos las variables por la diferencia de medianas
+  diferencias_medianas <- diferencias_medianas %>% arrange(desc(diferencia))
+  diferencias_medianas
+  
+```
+
+
+
+
+
+Usando el entorno R y paquetes estándares1, construir un modelo de regresión logística con el predictor seleccionado en el paso anterior y utilizando de la muestra obtenida.
+
+
+En base al análisis de las diferencias de medianas, se determina que la variable denominada
+- Waist.Girth
+Será la seleccionada, ya que es la que posee una mayor diferencia de medianas.
+
+
+```{r}
+
+conjunto_final_60_entrenamiento$EN <- as.factor(conjunto_final_60_entrenamiento$EN)
+
+modelo_inicial <- glm(EN ~ Waist.Girth, family = binomial(link= "logit"), data = 
+                conjunto_final_60_entrenamiento)
+print(summary(modelo))
+
+
+
+```
+
+
+Usando herramientas estándares1 para la exploración de modelos del entorno R, buscar entre dos y cinco predictores de entre las variables seleccionadas al azar, recordadas en el punto 3, para agregar al modelo obtenido en el paso 5.
+
+```{r}
+
+  #Realizamos el modelo completo
+  
+
+  modelo_completo <- glm(EN ~ Knees.diameter + Bicep.Girth + Chest.diameter + Wrists.diameter + Elbows.diameter + Chest.depth + Bitrochanteric.diameter + Navel.Girth, family = binomial(link= "logit"), data = 
+                  conjunto_final_60_entrenamiento)
+
+  modelo_inicial <- step(modelo_inicial, scope = list(lower = modelo_inicial, upper = modelo_completo), direction = "both", trace = 0)  
+
+
+  #Evaluamos la adición de un nuevo predictor
+
+
+
+
+
+  
+
+
+```
+
+
+
+Evaluar la confiabilidad de los modelos (i.e. que tengan un buen nivel de ajuste y son generalizables) y “arreglarlos” en caso de que tengan algún problema.
+
+
+Usando código estándar1, evaluar el poder predictivo de los modelos con los datos de las 40 personas que no se incluyeron en su construcción en términos de sensibilidad y especificidad.
+
+

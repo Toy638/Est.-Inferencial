@@ -1,0 +1,297 @@
+---
+title: "EI-EP09-respuesta-equipo-7"
+author: "Branco García Santana"
+date: "2023-11-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+libraries <- c("tidyverse", "dplyr", "ggpubr", "caret")
+
+lapply(libraries, function(package) {
+  if (!require(package, character.only = TRUE)) {
+    install.packages(package, dependencies = TRUE)
+    library(package, character.only = TRUE)
+  } else {
+    library(package, character.only = TRUE)
+  }
+})
+
+
+
+
+```
+
+# Equipo 7
+
+### Datos
+
+
+
+
+```{r}
+
+datos <- read.csv2("EP09_Datos.csv", sep = ";")
+
+```
+
+1.  Definir la semilla a utilizar, que corresponde a los últimos cuatro dígitos del RUN (sin considerar el dígito verificador) del integrante de menor edad del equipo.
+
+```{r}
+set.seed(2122)
+```
+
+2.  Seleccionar una muestra de 50 mujeres (si la semilla es un número par) o 50 hombres (si la semilla es impar).
+
+```{r}
+datos_m <- datos[datos$Gender == 0, ]
+muestra_m = datos_m[sample(1:nrow(datos_m), size = 50),]
+head(muestra_m)
+```
+
+
+3.  Seleccionar de forma aleatoria ocho posibles variables predictoras.
+
+```{r}
+num_columnas = 8
+predictores_a <- sample(names(muestra_m), num_columnas)
+print(predictores_a)
+
+```
+
+### Modelo regresión lineal simple
+
+4.  Seleccionar, de las otras variables, una que el equipo considere que podría ser útil para predecir la variable Peso, justificando bien esta selección.
+
+Para justificar la elección de un predictor se calculará la correlación de los ocho con la variable Peso, de tal forma que el resultado más alto será la escogida.
+
+```{r}
+
+# Primero obtenemos el nombre de todos los predictores que no sean los 8 seleccionados
+predictores_completo <- names(muestra_m)
+resto_predictores <- setdiff(predictores_completo, predictores_a)
+
+
+getCor <- function(predictores, data){
+  for (i in predictores) {
+    cor_test <- cor.test(data$Weight, data[[i]], method = "pearson")
+    cat("Coeficiente de correlación para", i, ":", cor_test$estimate, "\n")
+  }
+}
+
+getCor(resto_predictores, muestra_m)
+```
+
+A partir de los datos obtenidos tras realizar una prueba de correlación entre el resto de predictores y la variable de respuesta Peso, es posible escoger la variable Hip.Girth puesto que es la variable con un coeficiente de correlación más alto.
+
+Predictor escogido: Hip.Girth
+
+
+5.  Usando el entorno R, construir un modelo de regresión lineal simple con el predictor seleccionado en el paso anterior.
+
+```{r}
+# Paso 1: Justificar elección de la variable Waist.Girth
+coef <- cor.test(muestra_m$Weight, muestra_m$Hip.Girth, method = "pearson")
+cat("Coeficiente de correlación:", coef$estimate)
+```
+
+```{r}
+# Paso 2: realización del modelo lineal entre ambas variables
+modelo <- lm(Weight ~ Hip.Girth, data = muestra_m)
+summary(modelo)
+```
+
+```{r}
+# Paso 3: Gráfico del modelo
+
+# Graficar el modelo 
+p <- ggscatter(muestra_m, x = "Hip.Girth", y = "Weight", color = "blue", fill = "orange" ,xlab = "grosor a la altura de la cintura en cm" , ylab = "Peso de la persona en kg",
+               xticks.by = 5)
+
+p <- p + geom_smooth(method = lm, se = FALSE, colour = "red" )
+print(p)
+```
+
+
+### Selección de variables y regresión lineal múltiple (RLM).
+
+6.  Usando herramientas para la exploración de modelos del entorno R, buscar entre dos y cinco predictores de entre las variables seleccionadas al azar en el punto 3, para agregar al modelo de regresión lineal simple obtenido en el paso 5.
+
+```{r}
+# A continuación se evaluará manualmente los predictores y se agregarán al modelo en caso de que corresponda
+
+
+# Creamos una data frame con los datos de los 8 predictores aleatorios, la variable de respuesta y el predictor "Hip.Girth" seleccionado previamente
+predictores_seleccionados <- select(muestra_m, one_of(predictores_a))
+predictores_seleccionados$Weight <- muestra_m$Weight
+predictores_seleccionados$Hip.Girth <- muestra_m$Hip.Girth
+
+
+# El modelo incial en este caso ya considera la variable predictora Hip.Girth.
+modelo_inicial <- modelo
+#summary(modelo_inicial)
+
+# Ajustamos el modelo completo.
+modelo_completo <- lm(muestra_m$Weight ~ ., data = predictores_seleccionados)
+
+#summary(modelo_completo)
+
+# Evaluamos las variables para incorporar
+print(add1(modelo_inicial, scope = modelo_completo))
+
+# Seleccionamos la variable con menor AIC -> En este caso Chest.diameter
+modelo_final  <- update(modelo_inicial, . ~ . + Chest.diameter)
+
+# Analizamos cual es mejor, y así poder seguir agregando predictores
+print(anova(modelo_inicial, modelo_final))
+# Gracias al resultado anterior (p-value < 0.05) se puede concluir que el modelo al cual se le agregó un predictor es mejor que el anterior. Por lo tanto podemos seguir agregando predictores
+
+# Evaluamos las variables para incorporar
+print(add1(modelo_final, scope = modelo_completo))
+
+# Seleccionamos la variable con menor AIC -> En este caso Bicep.Girth
+modelo_final  <- update(modelo_final, . ~ . + Bicep.Girth)
+
+print(anova(modelo_inicial, modelo_final))
+# Gracias al resultado anterior (p-value < 0.05) se puede concluir que el modelo al cual se le agregó un predictor es mejor que el anterior. Por lo tanto podemos seguir agregando predictores
+
+# Evaluamos las variables para incorporar
+print(add1(modelo_final, scope = modelo_completo))
+
+# Seleccionamos la variable con menor AIC -> En este caso Elbows.diameter
+modelo_final  <- update(modelo_final, . ~ . + Elbows.diameter)
+
+print(anova(modelo_inicial, modelo_final))
+# Gracias al resultado anterior (p-value < 0.05) se puede concluir que el modelo al cual se le agregó un predictor es mejor que el anterior. Por lo tanto podemos seguir agregando predictores
+
+# Evaluamos las variables para incorporar
+print(add1(modelo_final, scope = modelo_completo))
+
+# Seleccionamos la variable con menor AIC -> En este caso Navel.Girth
+modelo_final  <- update(modelo_final, . ~ . + Navel.Girth)
+
+print(anova(modelo_inicial, modelo_final))
+# Gracias al resultado anterior (p-value < 0.05) se puede concluir que el modelo al cual se le agregó un predictor es mejor que el anterior. Por lo tanto podemos seguir agregando predictores
+
+# Evaluamos las variables para incorporar
+print(add1(modelo_final, scope = modelo_completo))
+
+# Seleccionamos la variable con menor AIC -> En este caso Knees.diameter
+modelo_final  <- update(modelo_final, . ~ . + Knees.diameter)
+
+print(anova(modelo_inicial, modelo_final))
+```
+
+### Confiabilidad de los modelos
+
+
+7.  Evaluar los modelos y "arreglarlos" en caso de que tengan algún problema con las condiciones que deben cumplir.
+
+```{r}
+# Evaluación modelo de regresión multiple obtenida previamente
+
+plot(modelo_final)
+
+predictores <- names(coef(modelo_final))[-1]
+datos_p <- muestra_m[, c(predictores, "Weight")]
+
+resultados <- data.frame(respuesta_predicha = fitted(modelo_final))
+
+resultados[["residuos_estandarizados"]] <- rstandard(modelo_final)
+resultados[["residuos_estudiantizados"]] <- rstudent(modelo_final)
+resultados[["distancia_Cook"]] <- cooks.distance(modelo_final)
+resultados[["dfBeta"]] <- dfbeta(modelo_final)
+resultados[["dffit"]] <- dffits(modelo_final)
+resultados[["apalancamiento"]] <- hatvalues(modelo_final)
+resultados[["covratio"]] <- covratio(modelo_final)
+
+cat("Identificación de valores atípicos: \n")
+
+# Buscamos las observciones con residuos estandarizados fuera del 95% esperado
+sospechoso1 <- which(abs(resultados[["residuos_estandarizados"]]) > 1.96)
+cat("- Residuos estandarizados fuera del 95% esperado: ", sospechoso1, "\n")
+
+# Buscamos observaciones con distancia de Cook mayor a 1
+sospechoso2 <- which(resultados[["distancia_cook"]] > 1)
+cat("- Residuos con una distancia de Cook alta:", sospechoso2, "\n")
+
+# Buscamos observaciones con apalancamiento mayor igual al doble del apalacamiento promedio
+apal_medio <- (ncol(datos_p) + 1) / nrow(datos_p)
+sospechoso3 <- which(resultados[["apalancamiento"]] > 2 * apal_medio)
+cat("- Residuos con apalancamiento fuera del rango: ", sospechoso3, "\n")
+
+sospechoso4 <- which(apply(resultados[["dfBeta"]] >= 1, 1, any))
+names(sospechoso4) <- NULL
+cat("- Residuos con DFBeta >= 1:", sospechoso4, "\n")
+
+# Buscamos observaciones con razón de covarianza fuera de rango
+inferior <- 1 - 3 * apal_medio
+superior <- 1 + 3 * apal_medio
+sospechoso5 <- which(resultados[["covratio"]] < inferior | resultados[["covratio"]] > superior)
+cat("- Residuos con razón de covarianza fuera de rango: ", sospechoso5, "\n")
+
+# Resumen de valores sospechosos
+
+sospechosos <- c(sospechoso1, sospechoso2, sospechoso3, sospechoso4, sospechoso5)
+
+sospechosos <- sort(unique(sospechosos))
+
+cat("\nResumen de valores sospechosos: \n")
+cat("Apalancamiento promedio: ", apal_medio, "\n")
+cat("Intervalo razón de covarianza: [", inferior, "; ", superior, "]\n\n", sep = "")
+
+print(round(resultados[sospechosos, c("distancia_Cook", "apalancamiento", "covratio")], 3))
+```
+
+Al analizar los resultados obtenidos, esto junto a los gráficos de la regresión, se puede observar algunas observaciones posee valores un tanto alto en lo que refiere a apalancamiento y covarianza, sin embargo, ninguna de las observaciones supera el valor recomendado de la distancia de Cook. Por lo tanto, podemos concluir que los datos analizados no presentan valores con sobreinfluencia, o no se tienen las justificaciones necesarias para modificarlos.
+
+
+### Calidad predictiva de los modelos
+
+8.  Estimación del poder predictivo del modelo obtenido.
+
+Para poder estimar el poder predictivo del modelo de regresión múltiple obtenido se realizará una validación cruzada, es específico una de 5 pliegues para obtener un mejor resultado.
+
+```{r}
+
+# Como conjunto de datos se utilizará los obtenidos en el paso anterior. (datos_p)
+
+n <- nrow(datos_p)
+n_entrenamiento <- floor(0.7 * n)
+
+muestra <- sample.int(n = n, size = n_entrenamiento, replace = FALSE)
+entrenamiento <- datos_p[muestra, ]
+prueba <- datos_p[-muestra, ]
+
+modelo_vc <- train(Weight ~ Hip.Girth + Knees.diameter + Bicep.Girth + Chest.diameter + Elbows.diameter + Navel.Girth, data = entrenamiento, method = "lm",
+                   trControl = trainControl(method = "cv", number = 5))
+
+summary(modelo_vc)
+
+predic_entrenamiento <- predict(modelo_vc, entrenamiento)
+error_entrenamiento <- entrenamiento[["Weight"]] - predic_entrenamiento
+mse_entrenamiento <- mean(error_entrenamiento ** 2)
+cat("MSE para el conjunto de entrenamiento: ", mse_entrenamiento, "\n")
+
+
+predic_prueba <- predict(modelo_vc, prueba)
+error_prueba <- prueba[["Weight"]] - predic_prueba
+mse_prueba <- mean(error_prueba ** 2)
+cat("MSE para el conjunto de prueba: ", mse_prueba, "\n")
+
+```
+
+
+
+### Conclusión
+
+A modo de conclusión, el presente modelo de regresión múltiple, está sobre ajustado, y se sospecha principalmente por el contraste de los valores MSE del procedimiento, ya que en el caso de prueba se obtuvo $MSE{prueba} = 12.58004$, mientras que, por otra parte, se obtuvo $MSE{entrenamiento} = 3.885053$, lo que índica que el modelo está sobre ajustado a los datos de entrenamiento y no generaliza de manera óptima los datos de prueba, siendo importante equilibrar el rendimiento del modelo en los datos de entrenamiento
+
+
+
+
+
+
