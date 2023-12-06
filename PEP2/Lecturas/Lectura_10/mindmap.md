@@ -1,0 +1,84 @@
+- Transformación de datos
+  - Transformaciones lineales
+    - Script 10.1
+  - Transformación logarítmica
+    - Script 10.2
+  - Escalera de potencias de Tukey
+    - Sirve para cambiar la distribución asimetrica para que se asemeja a la normal
+    - Ecuación
+      - $x^\lambda, \lambda>0$
+      - $log(x), \lambda=0$
+      - $-(x^\lambda),\lambda<0$
+    - Script
+      - Script 10.3: transformación de Tukey para la población total de Estados Unidos.
+      - ``` transformTukey(x, start, end, int, plotit, verbose, quiet, statistic, returnLambda)```
+  - Transformacionde Box-Cox
+    - Versión escalada de la transformación de Tukey
+    - $x'_\lambda= \frac{x^\lambda-1}{\lambda}$
+    - Script
+      - BoxCoxLambda(x, lower, upper): devuelve el valor óptimo de λ para la transformación Box-Cox del vector x
+      - BoxCox(x, lambda): devuelve un vector correspondiente a la transformación Box-Cox de x con parámetro lambda.
+      - BoxCoxInv(x, lambda): revierte la transformación Box-Cox del vector x con parámetro lambda.
+      - Script 10.4: transformación de Box-Cox para la población total de Estados Unidos.
+- Inferencia no paramétrica con variables numéricas
+  - Pruebas para una o dos muestras
+    - Prueba de suma de rangos de wilcoxon
+      - Alternativa no paramétrica a la prueba de t student muestras independientes
+      - Procedimiento
+        - Se ordenan los valores
+        - Se les asigna un valor de rango
+          - Si estan repetidos se promedian
+        - Se calcula $\mu_a$ y $\mu_b$:$\mu_a = n_a * \frac{n_T + 1}{2}$
+        - Tamaño de la muestra
+          - Grande
+            - Tamaño mayor o igual a 5
+          - Pequeña
+            - Tamaño menor a 5
+          - Esto lo anoto solo debido a que el procedimiento interno se diferencia
+      - Condiciones
+        - Las observaciones de ambas muestras son independientes
+        - La escala de medición debe ser a lo menos ordinal
+        - Hipótesis
+          - Ho: No hay diferencia(se distribuyen de igual forma)
+          - Ha: Si hay diferencia(distribuciones distintas)
+        - Muestras grandes
+          - Ambas muestras tienen tamaño mayor o igual a 5
+        - Muestras pequeñas
+        - Suma de rangos de wilcoxon en R
+          - wilcox.test(x, y, paired = FALSE, alternative, mu, conf.level)
+          - Script 10.5: prueba de Mann-Whitney para el ejemplo.
+    - Prueba de rangos con signo de Wilcoxon
+      - Alternativa no paramétrica a la prueba de t student muestras pareadas
+      - Condiciones:
+        - 1. Los pares de observaciones son independientes. 
+        - 2. La escala de medición empleada para las observaciones es intrínsecamente continua.
+        - 3. La escala de medición empleada para ambas muestras debe ser a lo menos ordinal.
+      - Hipótesis
+        - H0: las mismas personas no perciben diferencia en la usabilidad de ambas interfaces.
+        -  HA: las mismas personas consideran que la interfaz A tiene mejor usabilidad que la interfaz B.
+       - Script 10.6
+     - Prueba para más de dos muestras
+       - prueba de kruskal-wallis
+         - Condiciones
+           - Variable independiente de be tener a lo menos dos niveles
+           - La escala de la variable dependiente debe ser a lo menos ordinal
+           - Observaciones son independientes entre sí
+         - Hipotesis
+           - H0: todos los algoritmos son igual de eficientes (o, de manera similar, ningún algoritmo es menos ni más eficiente que los demás).
+           - HA: al menos uno de los algoritmos presenta una eficiencia diferente a al menos algún otro algoritmo.
+         - Script 10.7
+       - Prueba de friedman
+         - Poder estadístico es bastante menor
+         - Condiciones
+           - 1. La variable independiente debe ser categórica y tener a lo menos tres niveles. 
+           - 2. La escala de la variable dependiente debe ser, a lo menos, ordinal.
+           - 3. Los sujetos son una muestra aleatoria e independiente de la población.
+         - Hipótesis
+           - H0: Las interfaces tienen preferencias similares
+           - Ha: Al menos una interfaz obtiene una preferencia distinta a las demás
+         - Script 10.8
+           - pairwise.wilcox.test()
+- Resources
+  - [Prueba de Wilcoxon (Prueba de rango con signo de Wilcoxon)](https://www.youtube.com/watch?v=NZsL2eDQiDQ&t=248s)
+    - Me sirvió para lograr entender el texto
+    

@@ -1,0 +1,230 @@
+Script 10.1: transformación lineal para convertir grados Celcius a grados Fahrenheit.
+
+
+Aquí se presenta un ejemplo de una transformación lineal, ya que la ecuación de grados celsius a fahrenheit corresponde a una funcion lineal.
+
+```{r}
+# Crear un vector con cuatro observaciones en grados Celsius.
+Celsius <- c(-8, 0, 29.8, 100)
+
+# Aplicar transformación lineal para convertir a grados Fahrenheit.
+Fahrenheit <- 1.8 * Celsius + 32
+
+# Mostrar los resultados.
+cat("Temperaturas en grados Celsius\n")
+print(Celsius)
+
+cat("\nTemperaturas en grados Fahrenheit\n")
+print(Fahrenheit)
+
+```
+
+Script 10.2: transformación logarítmica.
+
+```{r}
+library(ggpubr)
+
+# Cargar datos
+animal <- c("Mountain beaver", "Cow", "Grey wolf", "Goat", "Guinea pig",
+            "Dipliodocus", "Asian elephant", "Donkey", "Horse",
+            "Potar monkey", "Cat", "Giraffe", "Gorilla", "Human",
+            "African elephant", "Triceratops", "Rhesus monkey", "Kangaroo",
+            "Golden hamster", "Mouse", "Rabbit", "Sheep", "Jaguar",
+            "Chimpanzee", "Brachiosaurus", "Mole", "Pig")
+
+body_weight <- c(1.35, 465, 36.33, 27.66, 1.04, 11700, 2547, 187.1, 521, 10,
+                 3.3, 529, 207, 62, 6654, 9400, 6.8, 35, 0.12, 0.023, 2.5,
+                 55.5, 100, 52.16, 87000, 0.122, 192)
+
+brain_weight <- c(465, 423, 119.5, 115, 5.5, 50, 4603, 419, 655, 115, 25.6,
+                  680, 406, 1320, 5712, 70, 179, 56, 1, 0.4, 12.1, 175, 157,
+                  440, 154.5, 3, 180)
+
+datos <- data.frame(animal, body_weight, brain_weight)
+
+# Aplicar transformación logarítmica
+log_cuerpo <- log(body_weight)
+log_cerebro <- log(brain_weight)
+datos <- data.frame(datos, log_cuerpo, log_cerebro)
+
+# Histogramas para el peso cerebral antes y después de la transformación logarítmica
+g3 <- gghistogram(datos, x = "brain_weight", bins = 10,
+                  xlab = "Peso del cerebro [g]", ylab = "Frecuencia",
+                  color = "red", fill = "red")
+
+g4 <- gghistogram(datos, x = "log_cerebro", bins = 10,
+                  xlab = "Peso del cerebro [log(g)]", ylab = "Frecuencia",
+                  color = "red", fill = "red")
+
+# Crear una única figura con ambos histogramas
+histograma <- ggarrange(g3, g4, ncol = 2, nrow = 1)
+
+titulo <- text_grob("Efecto de la transformación logarítmica", face = "bold", size = 14)
+
+histograma <- annotate_figure(histograma, top = titulo)
+print(histograma)
+
+# Gráficos de dispersión para la relación entre peso corporal y peso del 46 # cerebro , antes y después de aplicar la transformación logarítmica. 47
+g1 <- ggscatter(datos , x = "body_weight", y = "brain_weight",color = "red", xlab = "Peso corporal [Kg]", ylab = "Peso del cerebro [g]") + rotate_x_text (45)
+
+g2 <- ggscatter(datos , x = "log_cuerpo", y = "log_cerebro", color = "red", xlab = "Peso corporal [log(Kg)]",
+ylab = "Peso del cerebro [log(g)]") + rotate_x_text (45)
+
+
+# Crear una única figura con los gráficos de dispersión.
+dispersion <- ggarrange(g1, g2, ncol = 2, nrow = 1)
+texto <- "Relación entre el peso corporal y el peso del cerebro" 
+titulo <- text_grob(texto , face = "bold", size = 14)
+dispersion <- annotate_figure(dispersion , top = titulo)
+print(dispersion)
+
+
+
+
+?ggqqplot
+
+### CODIGO MIO  
+g3 <- ggqqplot(datos, x = "log_cuerpo", conf.int = TRUE, conf.int.level = 0.95, title = "QQ-Log_cuerpo")
+g4 <- ggqqplot(datos, x = "log_cerebro", conf.int = TRUE, conf.int.level = 0.95, title = "QQ-Log_cerebro")
+
+
+qq_figure <- ggarrange(g3,g4, ncol = 2, nrow = 1)
+texto <- "QQPLOT de variables"
+qq_figure <- annotate_figure(qq_figure, top = texto)
+print(qq_figure)
+
+
+
+```
+La escalera de potencias de Tukey esta determinada por la siguiente formula:
+$x^\lambda, \lambda>0 $
+$log(x), \lambda=0 $
+$-(x^\lambda), \lambda<0 $
+
+Script 10.3: transformación de Tukey para la población total de Estados Unidos.
+
+```{r}
+
+library(ggpubr)
+library(rcompanion)
+
+# Cargar datos
+Year <- c(1610, 1620, 1630, 1640, 1650, 1660, 1670, 1680, 1690, 1700, 1710, 
+          1720, 1730, 1740, 1750, 1760, 1770, 1780, 1790, 1800, 1810, 1820, 
+          1830, 1840, 1850)
+Population <- c(0.00035, -0.002302, 0.004646, 0.026634, 0.05368, 0.075058, 
+                0.111935, 0.151507, 0.210372, 0.250888, 0.331711, 0.466185, 
+                0.629445, 0.905563, 1.17076, 1.593625, 2.148076, 2.780369, 
+                3.929214, 5.308483, 7.239881, 9.638453, 12.86602, 17.069453, 
+                23.191876)
+
+
+datos <- data.frame(Year, Population)
+
+# Gráfico de dispersión e histograma.
+g1 <- gghistogram(datos, x = "Population", bins = 10, 
+                         xlab = "Población (millones)", ylab = "Frecuencia", 
+                         color = "blue", fill = "blue")
+
+g2 <- ggscatter(datos, x = "Year", y = "Population", color = "blue", 
+                xlab = "Año", ylab = "Población (millones)")
+
+# Histograma de la población y población por año
+original <- ggarrange(g1, g2, ncol = 2, nrow = 1)
+titulo <- text_grob("Histograma de la población y población por año", 
+                    face = "bold", size = 14)
+original <- annotate_figure(original, top = titulo)
+print(original)
+
+# Transformaciones de la población
+lambda_menos_dos <- 1 / (datos$Population ** 2)
+lambda_menos_uno <- -1 / datos$Population
+lambda_menos_un_medio <- -1 / sqrt(datos$Population)
+lambda_cero <- log(datos$Population)
+lambda_un_medio <- sqrt(datos$Population)
+lambda_dos <- datos$Population ** 2
+
+#se genera un nuevo dataframe a partir del dataframe original y los otros dos
+transformaciones <- data.frame(datos, lambda_menos_dos, lambda_menos_uno, 
+                               lambda_menos_un_medio, lambda_cero, 
+                               lambda_un_medio, lambda_dos)
+
+# Gráficos de dispersión para la transformación de Tukey de la población y el año, 
+# usando distintos valores de lambda.
+gt1 <- ggscatter(transformaciones, x = "Year", y = "lambda_menos_dos", 
+                 color = "blue", xlab = "Año", 
+                 ylab = "lambda -2") + rotate_x_text(45)
+
+gt2 <- ggscatter(transformaciones, x = "Year", y = "lambda_menos_uno", 
+                 color = "blue", xlab = "Año", 
+                 ylab = "lambda -1") + rotate_x_text(45)
+
+gt3 <- ggscatter(transformaciones, x = "Year", y = "lambda_menos_un_medio", 
+                 color = "blue", xlab = "Año", 
+                 ylab = "lambda -1/2") + rotate_x_text(45)
+
+gt4 <- ggscatter(transformaciones, x = "Year", y = "lambda_cero", 
+                 color = "blue", xlab = "Año", 
+                 ylab = "lambda 0") + rotate_x_text(45)
+
+gt5 <- ggscatter(transformaciones, x = "Year", y = "lambda_un_medio", 
+                 color = "blue", xlab = "Año", 
+                 ylab = "lambda 1/2") + rotate_x_text(45)
+
+gt6 <- ggscatter(transformaciones, x = "Year", y = "lambda_dos", 
+                 color = "blue", xlab = "Año", 
+                 ylab = "lambda 2") + rotate_x_text(45)
+
+# Crear una única figura con todos los gráficos de dispersión.
+dispersion <- ggarrange(gt1, gt2, gt3, gt4, gt5, gt6, ncol = 3, nrow = 2)
+texto <- "Población transformada por año"
+titulo <- text_grob(texto, face = "bold", size = 14)
+dispersion <- annotate_figure(dispersion, top = titulo)
+print(dispersion)
+
+# Histogramas para la transformación de Tukey de la población y el año, 
+# usando distintos valores de lambda.
+h1 <- gghistogram(transformaciones, bins = 10, x = "lambda_menos_dos", 
+                  color = "blue", fill = "blue", 
+                  xlab = "lambda -2") + rotate_x_text(45)
+
+h2 <- gghistogram(transformaciones, bins = 10, x = "lambda_menos_uno", 
+                  color = "blue", fill = "blue", 
+                  xlab = "lambda -1") + rotate_x_text(45)
+
+h3 <- gghistogram(transformaciones, bins = 10, x = "lambda_menos_un_medio", 
+                  color = "blue", fill = "blue", 
+                  xlab = "lambda -1/2") + rotate_x_text(45)
+
+h4 <- gghistogram(transformaciones, bins = 10, x = "lambda_cero", 
+                  color = "blue", fill = "blue", 
+                  xlab = "lambda 0") + rotate_x_text(45)
+
+h5 <- gghistogram(transformaciones, bins = 10, x = "lambda_un_medio", 
+                  color = "blue", fill = "blue", 
+                  xlab = "lambda 1/2") + rotate_x_text(45)
+
+h6 <- gghistogram(transformaciones, bins = 10, x = "lambda_dos", 
+                  color = "blue", fill = "blue", 
+                  xlab = "lambda 2") + rotate_x_text(45)
+
+# Crear una única figura con todos los gráficos de histograma
+histograma <- ggarrange(h1, h2, h3, h4, h5, h6, ncol = 3, nrow = 2)
+texto <- "Histogramas de la población transformada"
+titulo <- text_grob(texto, face = "bold", size = 14)
+histograma <- annotate_figure(histograma, top = titulo)
+print(histograma)
+
+# Buscar la mejor transformación de Tukey de la población y el año, 
+# usando distintos valores de lambda.
+transformacion <- transformTukey(datos$Population, start = -4, end = 4, 
+                                 int = 0.001, returnLambda = TRUE)
+
+
+
+
+
+```
+
+
+

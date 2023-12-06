@@ -1,0 +1,69 @@
+- Regresión Logística
+  - Función Logística estandar
+    - $f(z) =  \frac{1}{1+e^{-z}}$
+    - Util representar probabilidad de que ocurra un evento
+      - Valor cercano a cero indica muy poco probable
+      - Valor cercano a uno indica muy probable
+  - Respuesta dicotómica 
+    - Distribución binomial
+      - odds: 
+        - Oportunidad o chance, aunque incorrectamente se traduce como probabilidad
+        - $ odds = \frac{p}{1-p}$
+        - probabilidad(evento) = 0.5 <=> odds(e) = 0.1 
+        - Si siguieran distribución normal
+          - $ z = log(\frac{p}{1-p})   $
+          - $ p = logit(z) =  frac{1}{1+e^{-z}} $
+      - Umbral
+        - Clasificación
+          - Predicción
+            - Menores que el umbral no ocurre
+            - Mayores que el umbral, si ocurre
+          - Generelmente se usa el valor p(e) = 0.5
+  - Evaluación de un clasificador
+    - Cantidad de errores cometidos
+      - Tabla contingencia
+        - Verdaderos positivos (VP):
+          - cantidad de instancias correctamente clasificadas como pertenecientes a la clase positiva
+        - Falsos positivos (FP):
+          - Cantidad de instancias erroneamente clasificadas como pertenecientes a la clase positiva
+        - Falsos Negativos (FN):
+          - Cantidad de instancias erroneamiente clasificadas como pertenecientes a la clase negativa
+        - Verdaderos negativos (VN):
+          - Cantidad de instancias correctamente clasificadas como pertenecientes a la clase negativa
+    - Exactitud
+      - Proporcion de observaciones correctamente clasificadas
+      - $ Exactitud = \frac{VP + VN}{n} ,  n: total de valores en el conjunto de datos. $
+    - Error
+      - Proporcion de observaciones clasificadas de manera equivocada
+      - $ Error = \frac{FP + FN}{n} = 1- exactitud $
+    - Sensibilidad
+      - Cuan apto es el modelo para detectar observaciones pertenecientes a la clase positiva
+      - $ sensibilidad = \frac{VP}{VP + FN} $
+    - Especificidad
+      - Cúan exacta es la asignacion de elementos a la clase positiva
+      - También puede entenderse como Aptitud del modelo para correctamente asignar observaciones a la clase negativa  
+      - $ Especificidad = \frac{VN}{FP + VN} $
+    - Precisión (valor predictivo positivo)
+      - Proporcion de instancias clasificadas como positivas que realmente lo son
+      - $ VPP = VP / VP + FP$
+    - Valor predictivo negativo
+      - Proporcion de instancias correctamente clasificadas como pertenecientes a la clase negativa
+      -  $ VPN = VN /FN + VN$ 
+     - Curva de calibración (ROC)
+       - Relacion entre sensibilidad y especificidad
+   - Bondad de ajuste del modelo
+     - Log verosimilitud
+     - Desviacion
+   - Condiciones
+     - Debe existir una relación lineal entre los predictores y la respuesta transformada.
+     - Los residuos deben ser independientes entre sí
+     - Metodo no converje
+       - Multicolinealidad
+       - Informacion incompleta
+       - Separacion perfecta
+    - Generalización del modelo
+    - Selección de predictores
+      - Regresión jerarquica
+    - Comparación de modelos
+      - Regresión logística
+    - 

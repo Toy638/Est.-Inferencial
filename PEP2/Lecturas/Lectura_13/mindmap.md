@@ -1,0 +1,52 @@
+
+- capítulo 13. Regresión lineal multiple
+  - RLM
+    - Condiciones:    
+      - 1. La distribución de los residuos debe ser cercana a la normal.
+      - 2. La variabilidad de los residuos debe ser aproximadamente constante.
+      - 3. Los residuos deben ser independientes entre sí.
+      - 4. Cada variable se relaciona linealmente con la respuesta.
+      - Script 
+        - Script 13.1: regresión lineal para predecir el rendimiento de un automóvil a partir de dos variables.
+          - En este caso no hay una recta si no que un plano
+    - Con predicores categóricos
+      - Script 13.2: creación de variables artificiales para variables categóricas.
+    - Condiciones para usar RLM
+      - 1. Las variables predictoras deben ser cuantitativas o dicotómicas (de ahí la necesidad de variables indicadoras para manejar más de dos niveles).
+      - 2. La variable de respuesta debe ser cuantitativa y continua, sin restricciones para su variabilidad. 
+      - 3. Los predictores deben tener algún grado de variabilidad (su varianza no debe ser igual a cero). En otras palabras, no pueden ser constantes.
+      - 4. No debe existir multicolinealidad. Esto significa que no deben existir relaciones lineales fuertes entre dos o más predictores (coeficientes de correlación altos).
+      - 5. Los residuos deben ser homocedásticos (con varianzas similares) para cada nivel de los predictores. 
+      - 6. Los residuos deben seguir una distribución cercana a la normal centrada en cero. 
+      - 7. Los valores de la variable de respuesta son independientes entre sí.
+      - 8. Cada predictor se relaciona linealmente con la variable de respuesta.
+    - Evaluación del ajuste
+      - Principio de parsimonia
+      - Criterio de informaciónde akaike(AIC)
+      - Criterio bayesiano de schwarz(BIC)
+        - Mientras menor sea su valor mejor será el modelo
+      - Script 13.3: comparación de dos modelos lineales.
+    - Selección de predictores
+      - Métodos
+        - Regresión jerarquica
+        - Selección hacia adelante
+        - Eliminación hacia atrás
+        - Regresión escalonada
+        - Todos los subconjuntos
+      - Script
+        - Script 13.4: incorporación y eliminación de variables en un modelo de RLM.
+        - Script 13.5: Evaluación de variables a incorporar y eliminar en un modelo de RLM.
+        - Script 13.6: selección de predictores a incluir en una RLM.
+    - Evaluación de un modelo de RLM
+      - Identificación de valores con sobreinfluencia
+        - Residuo estandarizado
+        - Valor predicho ajustado
+        - Residuo estudiantizado
+        - Diferencia en ajuste
+        - Diferencia en betas
+        - Distancia de cook
+        - Apalancamiento
+        - Razón de covarianza
+      - Script 13.7: identificación de valores atípicos.
+    - Verificación de las condiciones
+      - 

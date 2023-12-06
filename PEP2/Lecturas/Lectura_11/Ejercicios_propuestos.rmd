@@ -1,0 +1,31 @@
+1. En tus palabras, ¿qué es un estadístico robusto? 
+
+2. Explica, en tus propias palabras, las dos medidas de tendencia central robustas presentadas en este capítulo.
+
+3. ¿Cómo funciona y para qué sirve la prueba de Yuen? 
+
+
+4. ¿Se pueden comparar dos medianas en vez de dos medias de grupos independientes? 
+
+5. Describe las funciones disponibles en el paquete WRS2 para hacer análisis de varianza robusta (con medias y con medianas, e incluyendo procedimientos post-hoc) para grupos independientes.
+
+6. ¿Existe una alternativa para medidas repetidas de la prueba de Yuen? 
+
+7. ¿Existe una alternativa robusta para hacer un análisis de varianza con medidas repetidas? 
+
+8. En tus palabras, ¿qué son las técnicas de remuestreo? 
+
+9. Explica si ¿podría considerarse que la prueba exacta de Fisher usa técnicas de remuestreo?
+
+10. ¿En qué se parecen y en qué se diferencias las técnicas de bootstrapping y permutación? 
+
+11. En tus palabras, ¿qué es una simulación Monte Carlo? 
+
+12. ¿Cómo realizarías bootstrapping para determinar si la estatura media de estudiantes de Las Condes es igual a la estatura media de estudiantes de La Pintana?
+
+13. ¿Cómo usarías Monte Carlo para verificar que un medicamento para bajar el colesterol funciona en un grupo de 30 personas escogidas al azar?
+
+14. ¿Cómo usarías bootstrapping para analizar si tres algoritmos necesitan tiempos similares en procesar 25 instancias de prueba del problema de la mochila?
+
+15. ¿Cómo usarías Monte Carlo para conocer si un medicamento para bajar la presión funciona al administrarlo a un grupo de personas hipertensas, comparando con un grupo de personas hipertensas recibiendo
+placebo y un grupo de control de personas no hipertensas?

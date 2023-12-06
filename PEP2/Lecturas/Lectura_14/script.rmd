@@ -1,0 +1,21 @@
+Script 14.1: ajuste de un modelo de regresión logística en R.
+
+
+```{r}
+
+```
+
+
+Script 14.2: ajuste de un modelo de regresión logística usando validación cruzada.
+```{r}
+
+```
+
+
+Script 14.3: ajuste y evaluación del mejor modelo para predecir el tipo de transmisión de un automóvil.
+```{r}
+
+```
+
+
+

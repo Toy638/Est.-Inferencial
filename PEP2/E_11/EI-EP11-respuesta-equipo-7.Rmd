@@ -1,0 +1,103 @@
+---
+title: "EI-EP11-respuesta-equipo-7"
+author: "Branco García Santana"
+date: "2023-11-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyverse)
+library(ggpubr)
+```
+
+
+
+Procedimiento previo:
+
+- Lectura de datos:
+
+```{r}
+datos <- read.csv2("EP09 Datos.csv", sep = ";")
+```
+
+- Ingreso a los datos las columnas IMC (índice de masa corporal) y estado nutricional (Sobrepeso, No sobrepeso)
+
+```{r}
+# Crear la variable IMC
+datos$IMC <- datos$Weight / (datos$Height / 100)^2
+
+# Sobrepeso: IMC >= 25.0
+# No sobrepeso: IMC < 25.0
+# Crear la variable dicotómica EN (estado nutricional)
+datos$EN <- ifelse(datos$IMC >= 25.0, "Sobrepeso", "No Sobrepeso")
+head(datos)
+```
+
+
+
+Actividades:
+
+1. Definir la semilla a utilizar, que corresponde a los primeros cinco dígitos del RUN del integrante de mayor edad del equipo.
+
+```{r}
+set.seed(8215)
+```
+
+2. Seleccionar una muestra de 100 personas, asegurando que la mitad tenga estado nutricional “sobrepeso” y la otra mitad “no sobrepeso”.
+
+```{r}
+# Separo los datos con sobrepeso y sin sobrepeso
+personas_sobrepeso = datos[datos$EN == "Sobrepeso",]
+personas_no_sobrepeso = datos[datos$EN == "No Sobrepeso",]
+# Obtengo una muestra de 50 de cada conjunto de datos que se separó
+muestra_sobrepeso = personas_sobrepeso[sample(1:nrow(personas_sobrepeso), size = 50),] 
+muestra_no_sobrepeso = personas_no_sobrepeso[sample(1:nrow(personas_no_sobrepeso), size = 50),] 
+# Uno las dos muestras en una, asegurando que la mitad tiene sobrepeso y la otra mitad no sobrepeso
+muestra_total = rbind(muestra_sobrepeso, muestra_no_sobrepeso)
+```
+
+3. Usando las herramientas del paquete leaps, realizar una búsqueda exhaustiva para seleccionar entre dos y ocho predictores que ayuden a estimar la variable Peso (Weight), obviamente sin considerar las nuevas variables IMC ni EN, y luego utilizar las funciones del paquete caret para construir un modelo de regresión lineal múltiple con los predictores escogidos y evaluarlo usando bootstrapping.
+
+```{r}
+library("leaps")
+# Seleccionar variables predictoras
+
+predictors <- muestra_total[, !(names(muestra_total)  %in% c("IMC", "EN"))]
+
+
+
+model <- regsubsets(Weight ~ ., data=predictors, nbest = 1, nvmax = 13)
+names(summary(model))
+
+
+summary(model)$which
+
+plot(model)
+
+```
+
+Haciendo un poco de investigación sobre el paquete caret, en particular cómo hacer Recursive Feature Elimination (RFE), construir un modelo de regresión lineal múltiple para predecir la variable IMC que incluya entre 10 y 20 predictores, seleccionando el conjunto de variables que maximice R2 y que use cinco repeticiones de validación cruzada de cinco pliegues para evitar el sobreajuste (obviamente no se debe considerar las variables Peso, Estatura ni estado nutricional –Weight, Height, EN respectivamente).
+```{r}
+
+```
+
+
+
+
+Usando RFE, construir un modelo de regresión logística múltiple para la variable EN que incluya el conjunto, de entre dos y seis, predictores que entregue la mejor curva ROC y que utilice validación cruzada dejando uno fuera para evitar el sobreajuste (obviamente no se debe considerar las variables Peso, Estatura –Weight y Height respectivamente– ni IMC).
+
+
+```{r}
+
+```
+
+
+Pronunciarse sobre la confiabilidad y el poder predictivo de los modelos obtenidos.
+
+```{r}
+
+```
+
+
