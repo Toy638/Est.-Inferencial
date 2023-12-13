@@ -181,3 +181,632 @@ Referencias:
 [1] Corpo, & Corpo. (2021, 28 enero). Descubre dónde acumulas más grasa segun la forma de tu cuerpo - Corpore Clinic. Corpore Clinic - Cirugia Plastica y estética. https://corporeclinic.cl/descubre-donde-acumulas-mas-grasa-segun-la-forma-de-tu-cuerpo/
 
 [2] Ponce, I. G. (2022, 7 diciembre). ¿En qué zonas del cuerpo es más peligroso que haya grasa? CuidatePlus. https://cuidateplus.marca.com/bienestar/2021/04/08/zonas-cuerpo-mas-peligroso-haya-grasa-177590.html#:~:text=La%20grasa%20corporal%20se%20reparte,%2C%20el%20h%C3%ADgado%2C%20los%20ri%C3%B1ones%E2%80%A6
+
+
+
+
+***************
+
+Con estos datos se pide construir un modelo de regresión lineal múltiple para predecir la variable respuesta, de acuerdo con las siguientes instrucciones:
+Definir la semilla a utilizar, que corresponde a los últimos cuatro dígitos del RUN (sin considerar el dígito verificador) del integrante de menor edad del equipo.
+Seleccionar una muestra de 50 mujeres (si la semilla es un número par) o 50 hombres (si la semilla es impar).
+Seleccionar de forma aleatoria ocho posibles variables predictoras.
+Seleccionar, de las otras variables, una que el equipo considere que podría ser útil para predecir los diámetros de las rodillas (Knees.diameter), justificando bien esta selección.
+Usando el entorno R, construir un modelo de regresión lineal simple con el predictor seleccionado en el paso anterior.
+Usando herramientas para la exploración de modelos del entorno R, buscar entre dos y cinco predictores de entre las variables seleccionadas al azar en el punto 3, para agregar al modelo de regresión lineal simple obtenido en el paso 5.
+Evaluar los modelos y “arreglarlos” en caso de que tengan algún problema con las condiciones que deben cumplir.
+Evaluar el poder predictivo del modelo en datos no utilizados para construirlo (o utilizando validación cruzada).
+Obtengamos los datos en formato ancho.
+
+```{r}
+set.seed(1111)
+src_dir <- "~/Downloads"
+src_basename <- "EP09 Datos.csv"
+src_file <- file.path(src_dir, src_basename)
+print(src_file)
+## [1] "~/Downloads/EP09 Datos.csv"
+datos <- read.csv(file = src_file, stringsAsFactors = TRUE)
+```
+Obtenemos la muestra.
+
+```{r}
+datos <- datos %>% filter(Gender == 1)
+datos[["Gender"]] <- NULL
+datos <- sample_n(datos, 50, replace = FALSE)
+```
+De este conjunto, seleccionamos 8 variables predictoras al azar, teniendo cuidado que no sea la variable de respuesta.
+```{r}
+variables <- colnames(datos)
+nombre.respuesta <- "Knees.diameter"
+i.respuesta <- which(variables == nombre.respuesta)
+predictores <- sample(variables[-i.respuesta], 8, replace = FALSE)
+cat("Predictores seleccionados al azar:\n")
+## Predictores seleccionados al azar:
+print(predictores)
+```
+## [1] "Knee.Girth"       "Bicep.Girth"      "Ankles.diameter"  "Chest.depth"     
+## [5] "Shoulder.Girth"   "Navel.Girth"      "Hip.Girth"        "Biiliac.diameter"
+“Knee.Girth” “Bicep.Girth” “Ankles.diameter” “Chest.depth” [5] “Shoulder.Girth” “Navel.Girth” “Hip.Girth” “Biiliac.diameter”
+
+Estos son los predictores seleccionados al azar para ser considerados en el modelo de regresión lineal múltiple que vamos a construir.
+
+Filtramos para quedarnos con estas variables, devolviendo la variable respuesta a la matriz de datos.
+```{r}
+datos.predictores <- datos %>% select(all_of(predictores))
+```
+Para seleccionar una de las variables restantes para construir un modelo de regresión lineal simple (RLS) vamos a evaluar su correlación con la variable respuesta.
+```{r}
+datos.resto <- datos %>% select(!all_of(predictores))
+i.respuesta.resto <- which(colnames(datos.resto) == nombre.respuesta)
+correlacion <- cor(datos.resto[-i.respuesta.resto], y = datos.resto[[nombre.respuesta]])
+
+
+cat("\nMatriz de correlación:\n")
+
+## 
+## Matriz de correlación:
+print(correlacion)
+```
+##                               [,1]
+## Biacromial.diameter      0.4850559
+## Bitrochanteric.diameter  0.6117476
+## Chest.diameter           0.5416543
+## Elbows.diameter          0.5753925
+## Wrists.diameter          0.5802727
+## Chest.Girth              0.4144555
+## Waist.Girth              0.2691703
+## Thigh.Girth              0.6396341
+## Forearm.Girth            0.5874430
+## Calf.Maximum.Girth       0.5885588
+## Ankle.Minimum.Girth      0.4609280
+## Wrist.Minimum.Girth      0.4987213
+## Age                     -0.1981882
+## Weight                   0.6375398
+## Height                   0.5164878
+El mejor predictor para un modelo de RLS es aquella variable con mayor correlación (directa o inversa) con la variable de respuesta.
+```{r}
+i.mejor <- which(correlacion == max(abs(correlacion)))
+predictor <- rownames(correlacion)[i.mejor]
+cat("\nVariable más correlacionada con el diámetro de las rodillas:",
+    predictor, "\n")
+## 
+## Variable más correlacionada con el diámetro de las rodillas: Thigh.Girth
+```
+
+Armamos el conjunto de datos para obtener un modelo de RLS.
+```{r}
+datos.rls <- datos %>% select(all_of(c(nombre.respuesta, predictor)))
+```
+Regresión lineal simple
+Demos entonces una mirada a los datos.
+```{r}
+p1 <- ggscatter(
+  datos.rls,
+  x = predictor,
+  y = nombre.respuesta
+)
+print(p1)
+```
+
+Este gráfico de dispersión parece mostrar una relación lineal entre las variables. Obtengamos el modelo de regresión lineal simple usando validación cruzada de 10 pliegues.
+```{r}
+fmla <- formula(paste(nombre.respuesta, predictor, sep = " ~ "))
+
+rls.train <- train(fmla, data = datos.rls, method = "lm",
+             trControl = trainControl(method = "cv", number = 10))
+rls <- rls.train[["finalModel"]]
+
+cat("\nModelo de regresión lineal simple\n")
+## 
+## Modelo de regresión lineal simple
+print(summary(rls))
+```
+## 
+## Call:
+## lm(formula = .outcome ~ ., data = dat)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -1.4882 -0.7232  0.0684  0.5252  2.2604 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(>|t|)    
+## (Intercept)  9.40491    1.79643   5.235 3.60e-06 ***
+## Thigh.Girth  0.18407    0.03193   5.765 5.72e-07 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 0.9249 on 48 degrees of freedom
+## Multiple R-squared:  0.4091, Adjusted R-squared:  0.3968 
+## F-statistic: 33.24 on 1 and 48 DF,  p-value: 5.716e-07
+Podemos ver que el modelo de RLS obtenido explica alrededor del 40% de la varianza en los datos y que es significativamente mejor que simplemente usar la media (F(1,48)=33,24;p<0,001).
+
+Evaluemos el modelo de RLS obtenido revisando sus residuos y estadísticas de influencia de los casos.
+```{r}
+eval.rls <- data.frame(predicted.probabilities = fitted(rls))
+eval.rls[["standardized.residuals"]] <- rstandard(rls)
+eval.rls[["studentized.residuals"]] <-rstudent(rls)
+eval.rls[["cooks.distance"]] <- cooks.distance(rls)
+eval.rls[["dfbeta"]] <- dfbeta(rls)
+eval.rls[["dffit"]] <- dffits(rls)
+eval.rls[["leverage"]] <- hatvalues(rls)
+eval.rls[["covariance.ratios"]] <- covratio(rls)
+```
+95% de los residuos estandarizados deberían estar entre −1.96 y +1.96.
+```{r}
+sospechosos1 <- which(abs(eval.rls[["standardized.residuals"]]) > 1.96)
+cat("- Residuos estandarizados fuera del 95% esperado: ")
+## - Residuos estandarizados fuera del 95% esperado:
+print(sospechosos1)
+```
+## [1]  4 47
+La condición parece cumplirse, ya que solo dos elementos no caen en el intervalo de aproximadamente dos desviaciones estándares, lo que corresponde a menos del 5% de los datos.
+
+Observaciones con distancia de Cook mayor a uno.
+```{r}
+sospechosos2 <- which(eval.rls[["cooks.distance"]] > 1)
+cat("- Residuos con distancia de Cook mayor que 1: ")
+## - Residuos con distancia de Cook mayor que 1:
+print(sospechosos2)
+## integer(0)
+```
+No hay observaciones con una distancia de Cook inaceptable.
+
+Busquemos observaciones con apalancamiento superior al doble del apalancamiento promedio: k+1n.
+```{r}
+k <- 1
+n <- nrow(datos.rls)
+
+apalancamiento.promedio <- (k + 1) / n 
+sospechosos3 <- which(eval.rls[["leverage"]] > 2 * apalancamiento.promedio)
+cat("- Residuos con apalancamiento fuera de rango (promedio = ",
+    apalancamiento.promedio, "): ", sep = "")
+## - Residuos con apalancamiento fuera de rango (promedio = 0.04):
+print(sospechosos3)
+```
+## [1] 22 37 50
+Aquí hay algunos casos a revisar.
+
+Veamos si el DFBeta nos entrega elementos sospechosos.
+```{r}
+sospechosos4 <- which(apply(eval.rls[["dfbeta"]] >= 1, 1, any))
+names(sospechosos4) <- NULL
+cat("- Residuos con DFBeta mayor que 1: ")
+## - Residuos con DFBeta mayor que 1:
+print(sospechosos4)
+## integer(0)
+```
+Nada por este lado.
+
+Finalmente, los casos no deberían desviarse significativamente de los límites recomendados para la razón de covarianza: 1−3k+1n<CVRi<1+3k+1n.
+```{r}
+CVRi.lower <- 1 - 3 * apalancamiento.promedio
+CVRi.upper <- 1 + 3 * apalancamiento.promedio
+
+sospechosos5 <- which(eval.rls[["covariance.ratios"]] < CVRi.lower |
+                        eval.rls[["covariance.ratios"]] > CVRi.upper)
+
+cat("- Residuos con razón de covarianza fuera de rango ([", CVRi.lower, ", ",
+    CVRi.upper, "]): ", sep = "")
+## - Residuos con razón de covarianza fuera de rango ([0.88, 1.12]):
+print(sospechosos5)
+```
+## [1] 22 47 50
+Este criterio aporta algunos casos al conjunto.
+
+Revisemos el resumen de casos sospechosos.
+```{r}
+sospechosos <- c(sospechosos1, sospechosos2, sospechosos3, sospechosos4,
+                 sospechosos5)
+
+sospechosos <- sort(unique(sospechosos))
+cat("\nResumen de observaciones sospechosas:\n")
+## 
+## Resumen de observaciones sospechosas:
+print(round(eval.rls[sospechosos,
+                     c("cooks.distance", "leverage", "covariance.ratios")],
+            3))
+            ```
+##     cooks.distance leverage covariance.ratios
+## X4           0.072    0.034             0.902
+## X22          0.009    0.141             1.209
+## X37          0.067    0.083             1.069
+## X47          0.137    0.042             0.824
+## X50          0.001    0.106             1.166
+Si bien hay algunas observaciones que podrían considerarse atípicas, ninguna muestra indicadores de influencia altos de forma consistente, por lo que no deberían ser causa de preocupación.
+
+Ahora bien, podría ser preocupante que la bondad de ajuste del modelo es relativamente baja, pues explica menos del 40% de la variabilidad en la variable predicha.
+
+Regresión lineal múltiple
+Para cumplir con la instrucción 6, vamos a utilizar el método de todos los subconjuntos para seleccionar de 2 a 5 predictores para construir un modelo de regresión lineal múltiple, teniendo cuidado de forzar a que el predictor usado en el modelo de RLS esté siempre presente.
+```{r}
+fmla <- formula(paste(nombre.respuesta, ".", sep = " ~ "))
+datos.rlm <- cbind(datos[[nombre.respuesta]], datos.predictores, datos[[predictor]])
+colnames(datos.rlm)[1] <- nombre.respuesta
+colnames(datos.rlm)[ncol(datos.rlm)] <- predictor
+
+subsets.rlm <- regsubsets(fmla, data = datos.rlm, nbest = 1, nvmax = 5,
+                          force.in = ncol(datos.rlm) - 1, method = "exhaustive")
+
+plot(subsets.rlm)
+```
+
+De acuerdo a la exploración de todos los subconjuntos, el mejor modelo que agrega entre 2 y 5 de los predictores seleccionados al azar al modelo de RLS que usa Thigh.Girth es aquel que incluye el diámetro de los tobillos (Ankles.diameter), el grosor de los hombros (Shoulder.Girth) y el grosor a la altura del ombligo (Navel.Girth) y el grosor de las caderas (Hip.Girth).
+
+Ajustemos el modelo con esta información teniendo cuidado de usar la misma validación cruzada de 10 pliegues que utilizamos para el modelo de RLS, de esta forma, ambos modelos pueden compararse de forma más directa y equitativa.
+```{r}
+# Obtenemos los predictores del mejor modelo de RLM
+subsets.rlm.summary <- summary(subsets.rlm)
+i.mejor.rlm <- which.min(subsets.rlm.summary[["bic"]])
+subsets.mejor.rlm <- subsets.rlm.summary[["which"]][i.mejor.rlm, ]
+predictores.mejor.rlm <- names(subsets.mejor.rlm)[subsets.mejor.rlm]
+predictores.mejor.rlm <- predictores.mejor.rlm[-1] # quitamos intercepto
+
+# Construimos la fórmula para el modelo de RLM con estos predictores
+fmla <- formula(paste(nombre.respuesta,
+                      paste(predictores.mejor.rlm, collapse = " + "),
+                      sep = " ~ "))
+
+# Recuperamos los pliegues de la validación cruzada utilizada con RLS
+pliegues <- rls.train[["control"]][["index"]]
+
+# Construimos el modelo de RLM
+rlm.train <- train (fmla, data = datos.rlm, method = "lm",
+              trControl = trainControl(method = "cv", number = 10, , index = pliegues))
+rlm <- rlm.train[["finalModel"]]
+
+cat("\nModelo de regresión lineal múltiple\n")
+## 
+## Modelo de regresión lineal múltiple
+print(summary(rlm))
+```
+## 
+## Call:
+## lm(formula = .outcome ~ ., data = dat)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.53097 -0.29768  0.07638  0.47113  1.23789 
+## 
+## Coefficients:
+##                 Estimate Std. Error t value Pr(>|t|)    
+## (Intercept)     -0.09234    2.28061  -0.040  0.96789    
+## Thigh.Girth      0.02641    0.04972   0.531  0.59795    
+## Ankles.diameter  0.52296    0.12023   4.350 7.97e-05 ***
+## Shoulder.Girth   0.04545    0.02028   2.241  0.03010 *  
+## Navel.Girth     -0.07113    0.02141  -3.322  0.00180 ** 
+## Hip.Girth        0.11815    0.04275   2.764  0.00832 ** 
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 0.7311 on 44 degrees of freedom
+## Multiple R-squared:  0.6616, Adjusted R-squared:  0.6231 
+## F-statistic:  17.2 on 5 and 44 DF,  p-value: 2.084e-09
+
+Vemos que se obtiene un modelo de RLM que explica el 62,31% de la varianza de los datos. Comparemos este modelo con el de RLS usando la función anova()del paquete car.
+```{r}
+print(anova(rls, rlm))
+```
+## Analysis of Variance Table
+## 
+## Model 1: .outcome ~ Thigh.Girth
+## Model 2: .outcome ~ Thigh.Girth + Ankles.diameter + Shoulder.Girth + Navel.Girth + 
+##     Hip.Girth
+##   Res.Df    RSS Df Sum of Sq      F   Pr(>F)    
+## 1     48 41.061                                 
+## 2     44 23.517  4    17.544 8.2061 4.92e-05 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Vemos que el modelo de RLM consigue una reducción significativa de la varianza no explicada de los datos (F(4,44)=8.206,p<0,001).
+
+Evaluemos la confiabilidad del modelo de RLM conseguido. En este punto, es importante notar que el predictor Thigh.Girth, elegido para el modelo de RLS, perdió relevancia en el modelo de RLM. Este tipo de variables suelen ser fuente de multicolinealidad y, en general, sería mejor eliminarlas del modelo. En este caso, sin embargo, trataremos de mantener este predictor porque el enunciado nos pide extender el modelo de RLS y no reemplazarlo. Pero si esta variable está causando fuerte colinealidad, entonces de todas formas tendremos que deshacernos de él.
+
+Comencemos entonces revisando este potencial problema.
+```{r}
+cat("Factores de inflación de la varianza:\n")
+## Factores de inflación de la varianza:
+print(vif(rlm))
+##     Thigh.Girth Ankles.diameter  Shoulder.Girth     Navel.Girth       Hip.Girth 
+##        3.880586        1.205383        1.685570        3.119217        7.096209
+cat("Estadísticos de tolerancia:\n")
+## Estadísticos de tolerancia:
+print(1 / vif(rlm))
+```
+##     Thigh.Girth Ankles.diameter  Shoulder.Girth     Navel.Girth       Hip.Girth 
+##       0.2576931       0.8296118       0.5932712       0.3205932       0.1409203
+Vemos que, en general, hay indicios de multicolinealidad moderada, pues los valores de inflación de la varianza están entre 1 y 5, con la excepción de el grosor de las caderas que sobrepasa este valor pero que todas forma está bajo el valor 10 que se suele usar como umbral que indica alta colinealidad con los otros predictores.
+
+Quitemos esta variable y veamos si obtenemos un modelo más confiable.
+```{r}
+# Quitamos este predictor de la fórmula
+i.caderas <- which(predictores.mejor.rlm == "Hip.Girth")
+fmla <- formula(paste(nombre.respuesta,
+                      paste(predictores.mejor.rlm[-i.caderas], collapse = " + "),
+                      sep = " ~ "))
+
+# Obtenemos el nuevo modelo usando los mismos pliegues anteriores
+rlm2.train <- train (fmla, data = datos.rlm, method = "lm",
+              trControl = trainControl(method = "cv", number = 10, index = pliegues))
+rlm2 <- rlm2.train[["finalModel"]]
+
+cat("\nModelo de regresión lineal múltiple\n")
+## 
+## Modelo de regresión lineal múltiple
+print(summary(rlm2))
+```
+
+## 
+## Call:
+## lm(formula = .outcome ~ ., data = dat)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -1.6380 -0.4695  0.1818  0.4520  1.8057 
+## 
+## Coefficients:
+##                 Estimate Std. Error t value Pr(>|t|)    
+## (Intercept)      1.25563    2.38650   0.526 0.601376    
+## Thigh.Girth      0.12716    0.03621   3.512 0.001026 ** 
+## Ankles.diameter  0.51919    0.12878   4.031 0.000211 ***
+## Shoulder.Girth   0.05434    0.02145   2.534 0.014842 *  
+## Navel.Girth     -0.03047    0.01666  -1.829 0.074048 .  
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 0.7831 on 45 degrees of freedom
+## Multiple R-squared:  0.6028, Adjusted R-squared:  0.5675 
+## F-statistic: 17.08 on 4 and 45 DF,  p-value: 1.38e-08
+Veamos si resolvimos el posible problema de multicolinealidad.
+```{r}
+cat("Factores de inflación de la varianza:\n")
+## Factores de inflación de la varianza:
+print(vif(rlm2))
+##     Thigh.Girth Ankles.diameter  Shoulder.Girth     Navel.Girth 
+##        1.794007        1.205228        1.643161        1.646525
+cat("Estadísticos de tolerancia:\n")
+## Estadísticos de tolerancia:
+print(1 / vif(rlm2))
+```
+##     Thigh.Girth Ankles.diameter  Shoulder.Girth     Navel.Girth 
+##       0.5574114       0.8297184       0.6085831       0.6073397
+Ahora el modelo contiene predictores con baja colinealidad entre ellos.
+
+Veamos si se mantiene la superioridad de este nuevo modelo de RLM sobre el modelo de RLS.
+```{r}
+print(anova(rls, rlm2))
+```
+## Analysis of Variance Table
+## 
+## Model 1: .outcome ~ Thigh.Girth
+## Model 2: .outcome ~ Thigh.Girth + Ankles.diameter + Shoulder.Girth + Navel.Girth
+##   Res.Df    RSS Df Sum of Sq      F   Pr(>F)    
+## 1     48 41.061                                 
+## 2     45 27.599  3    13.462 7.3164 0.000426 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Vemos que el modelo de RLM mejorado también consigue una reducción significativa de la varianza no explicada de los datos con respecto al modelo de RLS (F(3,45)=7.316,p<0,001
+), aunque parece haber una reducción de esta con respecto al primer modelo de RLM. [Como ejercicio, compare ambos modelos de RLM para saber si uno consigue reducir más la varianza no explicada que el otro.]
+
+Revisando si existen relaciones aproximadamente lineales entre los predictores y la variable de interés.
+```{r}
+predictores.mejor.rlm <- predictores.mejor.rlm[-i.caderas]
+
+datos.rlm.largo <- datos.rlm %>%
+  select(all_of(c(nombre.respuesta, predictores.mejor.rlm))) %>%
+  pivot_longer(!all_of(nombre.respuesta), names_to = "predictores", values_to = "valores")
+
+p.linealidad <- ggscatter(datos.rlm.largo, x = "valores", y = nombre.respuesta,
+                          color = "predictores", add = "reg.line")
+p.linealidad <- p.linealidad + facet_wrap(~ predictores, scales = "free_x")
+
+print(p.linealidad)
+```
+
+Podemos ver que efectivamente parece haber relaciones lineales entre los predictores usados y la variable de salida (Knees.diameter).
+
+Revisemos si los residuos siguen una distribución aproximadamente normal, que incluye la condición de homocedasticidad. Para esto usamos el primer gráfico de diagnóstico disponibles nativamente en R.
+```{r}
+plot(rlm2, which = 1)
+```
+
+En el gráfico de residuos se ven observaciones que se alejan un poco más por la parte baja, aportando asimetría a la distribución de los residuos, pero esto no parece suficiente como para sospechar algún patrón anormal. [Como ejercicio, grafique un histograma de los residuos para ver con mayor claridad este punto; también puede aplicar pruebas de normalidad.]
+
+También se observa un un poco menos de variación en los valores bajo 18. Sin embargo, esto último parece deberse a que el muestreo nos dejó menos valores bajo este valor (totalmente esperable, así como sobre el valor 21), por lo que no parece violarse la homocedasticidad de estos residuos.
+
+Por último, revisemos la independencia de los residuos.
+```{r}
+cat("\nIndependencia de los residuos\n")
+## 
+## Independencia de los residuos
+print(durbinWatsonTest(rlm2))
+```
+##  lag Autocorrelation D-W Statistic p-value
+##    1      -0.2155422      2.420784   0.112
+##  Alternative hypothesis: rho != 0
+La prueba de Durbin-Watson nos indica que no hay suficiente evidencia para descartar la independencia de los residuos (D−W=2,421;p=0,112
+), por lo que estamos bien con esta condición.
+
+Ahora revisemos que el modelo no está siendo distorsionado por casos muy influyentes.
+```{r}
+eval.rlm <- data.frame(predicted.probabilities = fitted(rlm2))
+eval.rlm[["standardized.residuals"]] <- rstandard(rlm2)
+eval.rlm[["studentized.residuals"]] <-rstudent(rlm2)
+eval.rlm[["cooks.distance"]] <- cooks.distance(rlm2)
+eval.rlm[["dfbeta"]] <- dfbeta(rlm2)
+eval.rlm[["dffit"]] <- dffits(rlm2)
+eval.rlm[["leverage"]] <- hatvalues(rlm2)
+eval.rlm[["covariance.ratios"]] <- covratio(rlm2)
+```
+95 % de los residuos estandarizados deberían estar entre −1.96 y +1.96 (y 99% entre −2.58 y +2.58).
+```{r}
+cat("Influencia de los casos:\n")
+## Influencia de los casos:
+sospechosos1 <- which(abs(eval.rlm[["standardized.residuals"]]) > 1.96)
+cat("- Residuos estandarizados fuera del 95% esperado: ")
+## - Residuos estandarizados fuera del 95% esperado:
+print(sospechosos1)
+```
+## [1] 31 44 47
+Este modelo parece cumplir con el número de residuos fuera de rango con 95% de los datos (se esperan 2,5 en promedio).
+
+Busquemos observaciones con distancia de Cook mayor a uno.
+```{r}
+sospechosos2 <- which(eval.rlm[["cooks.distance"]] > 1)
+cat("- Residuos con distancia de Cook mayor que 1: ")
+## - Residuos con distancia de Cook mayor que 1:
+print(sospechosos2)
+```
+## integer(0)
+¡Bien! No hay casos con distancias de Cook inaceptables.
+
+Busquemos ahora observaciones con apalancamiento superior al doble del apalancamiento promedio: k+1n
+.
+```{r}
+k <- length(predictores.mejor.rlm)
+n <- nrow(datos.rlm)
+
+apalancamiento.promedio <- (k + 1) / n
+sospechosos3 <- which(eval.rlm[["leverage"]] > 2 * apalancamiento.promedio)
+
+cat("- Residuos con apalancamiento fuera de rango (promedio = ",
+    apalancamiento.promedio, "): ", sep = "")
+## - Residuos con apalancamiento fuera de rango (promedio = 0.1):
+print(sospechosos3)
+```
+## [1]  9 32
+Este criterio nos aporta un par de casos a revisar.
+
+Veamos que nos dice el criterio DFBeta < 1.
+```{r}
+sospechosos4 <- which(apply(eval.rlm[["dfbeta"]] >= 1, 1, any))
+names(sospechosos4) <- NULL
+cat("- Residuos con DFBeta mayor que 1: ")
+## - Residuos con DFBeta mayor que 1:
+print(sospechosos4)
+```
+## [1] 45
+Este criterio aporta con un caso que vigilar.
+
+Finalmente, apliquemos el criterio que los casos no deberían desviarse significativamente de los límites recomendados para la razón de covarianza: 1−3k+1n<CVRi<1+3k+1n
+.
+```{r}
+CVRi.lower <- 1 - 3 * apalancamiento.promedio
+CVRi.upper <- 1 + 3 * apalancamiento.promedio
+
+sospechosos5 <- which(eval.rlm[["covariance.ratios"]] < CVRi.lower |
+                        eval.rlm[["covariance.ratios"]] > CVRi.upper)
+
+cat("- Residuos con razón de covarianza fuera de rango ([", CVRi.lower, ", ",
+    CVRi.upper, "]): ", sep = "")
+## - Residuos con razón de covarianza fuera de rango ([0.7, 1.3]):
+print(sospechosos5)
+```
+## [1]  9 12 16 22 23 31 47 48
+Uy! Este criterio aporta varios casos a revisar con mayor detalle.
+
+Veamos entonces el resumen de casos sospechosos.
+```{r}
+sospechosos <- c(sospechosos1, sospechosos2, sospechosos3, sospechosos4,
+                 sospechosos5)
+
+sospechosos <- sort(unique(sospechosos))
+cat("\nResumen de observaciones sospechosas:\n")
+## 
+## Resumen de observaciones sospechosas:
+print(round(eval.rls[sospechosos,
+                     c("cooks.distance", "leverage", "covariance.ratios")],
+            3))
+            ```
+##     cooks.distance leverage covariance.ratios
+## X9           0.000    0.023             1.068
+## X12          0.023    0.043             1.044
+## X16          0.004    0.069             1.115
+## X22          0.009    0.141             1.209
+## X23          0.011    0.021             1.021
+## X31          0.075    0.052             0.979
+## X32          0.012    0.020             1.014
+## X44          0.048    0.036             0.967
+## X45          0.000    0.054             1.102
+## X47          0.137    0.042             0.824
+## X48          0.028    0.021             0.954
+Vemos que aunque algunas observaciones podrían indicar algunos problemas con uno de los indicadores, ninguna de ellas muestra consistentemente valores altos en los tres indicadores de influencia, por lo que el modelo no parece estar afectado por casos muy influyentes.
+
+Puesto que se cumplen las suposiciones de linealidad con la variable de salida y normalidad (+ homocedasticidad) e independencia de los residuos, además de que no hay presencia de multicolinealidad fuerte ni casos con mucha influencia, podemos concluir que el modelo de RLM obtenido es confiable.
+
+Solo nos queda revisar la calidad predictiva de los modelos conseguidos. Como se refuerza en el enunciado, es importante hacer esta evaluación con datos distintos a los usados en la construcción de los modelos. Aquí le pedimos a R que hiciera el trabajo por nosotros al usar validación cruzada para construirlos. Luego, basta con mirar la información que nos entregó la función train() haciendo uso de funciones proporcionadas por el paquete caret.
+```{r}
+errores.pliegues <- resamples(list(RLS = rls.train, RLM = rlm2.train))
+p.ic <- dotplot(errores.pliegues, metric = "RMSE")
+p.box <- bwplot(errores.pliegues, metric = "RMSE")
+ ```
+Por ejemplo, veamos intervalos de confianza para la raíz del error cuadrático medio, que es la métrica que se evalúa por omisión (by default) al construir modelos de regresión.
+```{r}
+print(p.ic)
+ ```
+
+En este gráfico se puede ver que el intervalo de confianza estimado para el error cometido por cada modelo. Aunque hay mayor dispersión con el modelo de RLM y bastante traslape, a simple vista pareciera que hay una tendencia a conseguir menor error con este modelo.
+
+Si consideramos que cada modelo corresponde a un hiperplano distinto (con diferentes coeficientes y número de predictores), podríamos considerar que uno de ellos no afecta el rendimiento del otro. Asumiendo esta independencia, podríamos aplicar una prueba para comparar el error medio al que llevan. Como el error es calculado con los mismos conjuntos de datos (pliegues de la validación cruzada), las medidas de error están apareadas.
+```{r}
+print(t.test(errores.pliegues[["values"]][["RLS~RMSE"]],
+             errores.pliegues[["values"]][["RLM~RMSE"]],
+             paired = TRUE))
+              ```
+## 
+##  Paired t-test
+## 
+## data:  errores.pliegues[["values"]][["RLS~RMSE"]] and errores.pliegues[["values"]][["RLM~RMSE"]]
+## t = 3.8798, df = 9, p-value = 0.003732
+## alternative hypothesis: true mean difference is not equal to 0
+## 95 percent confidence interval:
+##  0.07131292 0.27075894
+## sample estimates:
+## mean difference 
+##       0.1710359
+Vemos que efectivamente el modelo de RLM consigue, en promedio, menores errores que los que obtiene el modelo de RLS (95% IC:[0,071;0.271],t(9)=3,880,p=0.004
+).
+
+¿Qué tanta generalizable es este resultado? Veamos mirando el siguiente gráfico.
+```{r}
+print(p.box)
+  ```
+
+A primera vista hay parece haber mucha variabilidad, al menos en el caso del modelo de RLM. Exploremos esta variabilidad un poco más.
+```{r}
+rlm2.err.summary <- summary(errores.pliegues[["values"]][["RLM~RMSE"]])
+print(rlm2.err.summary)
+  ```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##  0.2384  0.6216  0.6873  0.7314  0.8918  1.2544
+Podemos ver que el peor error encontrado es más de 5 veces el mejor error registrado. Esto significa que este error depende en gran medida en los datos usados para construir y evaluar, lo que genera serias dudas de la generalidad del modelo.
+
+Por esta razón, sería recomendable conseguir una muestra con más datos para poder encontrar coeficientes que no dependan tanto de la subdivisión que hagamos.
+
+Por otro lado, consideremos cómo varía la variable Knees.diameter.
+
+```{r}
+respuesta.summary <- summary(datos.rlm[[nombre.respuesta]])
+print(respuesta.summary)
+  ```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##   17.30   19.00   19.60   19.73   20.68   22.20
+```{r}
+respuesta.rango <- respuesta.summary["Max."] - respuesta.summary["Min."]
+names(respuesta.rango) <- "Rango"
+cat("Rango de la variable de respuesta:\n")
+## Rango de la variable de respuesta:
+print(respuesta.rango)
+  ```
+## Rango 
+##   4.9
+```{r}
+cat("Errores porcentuales:\n")
+## Errores porcentuales:
+print(round(rlm2.err.summary / respuesta.rango * 100, 2))
+  ```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##    4.87   12.68   14.03   14.93   18.20   25.60
+Podemos ver que la variable respuesta varía entre 17,3 cm y 22,2 cm, es decir, tiene un rango de 4,9 cm en la muestra. Considerando los errores porcentuales, la idea de que el modelo tiene problemas de generalización parecen afirmarse, puesto un error de 4,87% puede ser aceptable, mientras que un error promedio de 14,93 podría estar en el límite, y es poco probable que un error de 25,6% pueda pasar.
+
+El error promedio que comete el modelo de RLM resultó significativamente menor que el error exhibido por el modelo de RLS, aunque con mayor dispersión.
+A pesar de que este modelo de RLM resultó confiable, parece tener problemas de generalización.
