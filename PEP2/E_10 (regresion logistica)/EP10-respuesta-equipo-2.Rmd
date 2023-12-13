@@ -1,0 +1,288 @@
+---
+title: "EP10-respuesta-equipo-2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ggpubr)
+library(dplyr)
+library(car)
+```
+
+```{r}
+data <- read.csv2("EP09 Datos.csv", header = TRUE)
+```
+
+### Datos
+```{r}
+mujeres <- data[data$Gender == 0,]
+mujeres$IMC <- mujeres$Weight / (mujeres$Height*0.01)^2
+
+#Se define la variable dicotómica EN (estado nutricional) la cual depende del valor de IMC de cada persona.
+# Sobrepreso = 1
+# No sobrepreso = 0
+mujeres$EN <- ifelse(mujeres$IMC >= 25.0, 1, 0)
+```
+
+##### 1. Definir la semilla a utilizar, que corresponde a los últimos cuatro dígitos del RUN (sin considerar el dígito verificador) del integrante de mayor edad del equipo.
+
+Siguiendo las instrucciones indicadas, la semilla utilizada será 7704
+
+```{r}
+set.seed(7704)
+```
+
+##### 2. Seleccionar una muestra de 90 mujeres (si la semilla es un número par) o 90 hombres (si la semilla es impar), asegurando que la mitad tenga estado nutricional “sobrepeso” y la otra mitad “no sobrepeso” en cada caso. Dividir esta muestra en dos conjuntos: los datos de 60 personas (30 con EN “sobrepeso”) para utilizar en la construcción de los modelos y 30 personas (15 con EN “sobrepeso”) para poder evaluarlos.
+
+Debido a que la semilla (7704) es par se seleccionará una muestra de 90 mujeres.
+
+```{r}
+# Muestra con sobre peso y sin sobrepeso
+m_s <- mujeres[mujeres$EN == 1,]
+m_ns <- mujeres[mujeres$EN == 0,]
+
+# Buscamos que tanto la cantidad de mujeres con sobrepreso como las sin sobrepreso sean ambas 45
+muestra_ns <- sample_n(m_ns, 45)
+muestra_s <- sample_n(m_s, 45)
+
+# Creamos los dataframes de entrenamiento con 30 mujeres con sobrepeso y 30 sin sobrepeso
+train_s <- head(muestra_s, 30)
+train_ns <- head(muestra_ns, 30)
+train <- rbind(train_s, train_ns) #Se unen ambas muestras
+train <- sample_n(train, 60, replace = FALSE) #Se realiza esto para evitar que la muestra esté ordenada
+
+# Creamos el dataframe con que se evaluará el modelo
+test_s <- tail(muestra_s, 15)
+test_ns <- tail(muestra_ns, 15)
+test <- rbind(test_s, test_ns) #Se unen ambas muestras
+test <- sample_n(test, 30, replace = FALSE) #Se realiza esto para evitar que la muestra esté ordenada
+```
+
+
+##### 3. Recordar las ocho posibles variables predictoras seleccionadas de forma aleatoria en el ejercicio anterior.
+
+Utilizando un generador aleatorio de números se han seleccionado las siguientes 8 posibles variables predictoras:
+
+Chest.depth  
+Shoulder.Girth  
+Bitrochanteric.diameter  
+Navel.Girth  
+Hip.Girth  
+Knee.Girth  
+Ankles.diameter  
+Knees.diameter  
+
+
+### Modelo de regresión logística simple (RlogS)
+##### 4. Seleccionar, de las otras variables, una que el equipo considere que podría ser útil para predecir la variable Peso, justificando bien esta selección.
+ 
+Creemos que Waist.Girth (grosor a la altura de la cintura) podría ser útil para predecir la variable peso debido a que la mayor parte de la grasa corporal se acumula en esa zona, además algunos artículos relacionados con medicina afirman la cintura como un área en la cual se acumula gran parte de la grasa corporal [1] y [2].
+
+##### 5. Usando el entorno R y paquetes estándares, construir un modelo de regresión logística con el predictor seleccionado en el paso anterior y utilizando de la muestra obtenida.
+
+```{r}
+modelo <- glm(EN ~ Waist.Girth, family = binomial(link = "logit"), data = train)
+print(summary(modelo))
+```
+
+### Selección de variables y Modelo de regresión logística multiple (RlogM)
+##### 6. Usando herramientas estándares para la exploración de modelos del entorno R, buscar entre dos y cinco predictores de entre las variables seleccionadas al azar, recordadas en el punto 3, para agregar al modelo obtenido en el paso 5.
+
+Añadimos predictores uno por uno y observamos el cambio en el criterio de información de Akaike (AIC).
+
+```{r}
+# Exploración de modelos con selección hacia adelante
+forward_model <- add1(modelo, scope = ~ Waist.Girth + Chest.depth + Shoulder.Girth + 
+                        Bitrochanteric.diameter + Navel.Girth + Hip.Girth + 
+                        Knee.Girth + Ankles.diameter + Knees.diameter, test = "Chisq")
+print(forward_model)
+```
+
+Agregamos Hip.Girth debido a que es la variable con menor AIC = 25.92 al agregarla al modelo base.
+```{r}
+modeloMultiple <- update(modelo, . ~ . + Hip.Girth)
+print(summary(modeloMultiple))
+```
+
+Ahora evaluamos el AIC si agregaramos las variables restantes.
+```{r}
+forward_model <- add1(modelo, scope = ~ Waist.Girth + Chest.depth + Shoulder.Girth + 
+                        Bitrochanteric.diameter + Navel.Girth + Hip.Girth + 
+                        Knee.Girth + Ankles.diameter + Knees.diameter, test = "Chisq")
+print(forward_model)
+```
+
+Dado que necesitamos otra variable para predecir el estado nutricional EN según lo solicitado en el enunciado del ejercicio, agregamos la variable con menor AIC, en este caso, Ankles.diameter con AIC = 26.717 aunque no haya mejorado el modelo.
+```{r}
+modeloMultiple <- update(modeloMultiple, . ~ . + Ankles.diameter)
+print(summary(modeloMultiple))
+```
+
+
+### Confiabilidad de los modelos
+##### 7. Evaluar la confiabilidad de los modelos (i.e. que tengan un buen nivel de ajuste y son generalizables) y “arreglarlos” en caso de que tengan algún problema.
+
+##### Modelo de regresión logística
+
+```{r}
+# Comprobar la independencia de los residuos.
+cat ("Prueba de Durbin - Watson para autocorrelaciones")
+cat ("entre errores :\n ")
+print(durbinWatsonTest(modelo))
+
+# Comprobar normalidad de los residuos
+cat ("\nPrueba de normalidad para los residuos:\n" )
+print(shapiro.test(modelo$residuals))
+
+# Comprobar homocedasticidad de los residuos.
+# Obtener los residuos del modelo
+residuos <- residuals(modelo, type = "response")
+
+# Gráfico de dispersión de residuos frente a los valores ajustados
+plot(predict(modelo, type = "response"), residuos, ylab = "Residuos", xlab = "Valores ajustados", main = "Homocedasticidad")
+
+# Opcional: añadir una línea horizontal en y = 0 para facilitar la visualización
+abline(h = 0, col = "red")
+
+# Crear gráficos adicionales como un gráfico quantil-quantil (Q-Q plot) de los residuos
+qqnorm(residuos)
+qqline(residuos)
+```
+
+##### Modelo de regresión multiple
+
+```{r}
+# Comprobar la independencia de los residuos.
+cat ("Prueba de Durbin - Watson para autocorrelaciones")
+cat ("entre errores :\n ")
+print(durbinWatsonTest(modeloMultiple))
+
+# Comprobar normalidad de los residuos
+cat ("\nPrueba de normalidad para los residuos:\n" )
+print(shapiro.test(modeloMultiple$residuals))
+
+# Comprobar homocedasticidad de los residuos.
+# Obtener los residuos del modelo
+residuosMultiple <- residuals(modeloMultiple, type = "response")
+
+# Gráfico de dispersión de residuos frente a los valores ajustados
+plot(predict(modeloMultiple, type = "response"), residuosMultiple, ylab = "Residuos", xlab = "Valores ajustados", main = "Homocedasticidad")
+
+# Opcional: añadir una línea horizontal en y = 0 para facilitar la visualización
+abline(h = 0, col = "red")
+
+# Crear gráficos adicionales como un gráfico quantil-quantil (Q-Q plot) de los residuos
+qqnorm(residuosMultiple)
+qqline(residuosMultiple)
+
+# Comprobar la multicolinealidad entre las variables
+vifsMultiple <- vif(modeloMultiple)
+vifsMultiple
+print(1/vifsMultiple)
+print(mean(vifsMultiple))
+```
+
+Al verificar las condiciones, en ambos modelos se falla en rechazar las hipótesis nulas de las pruebas realizadas, con excepción de la comprobación de la normalidad de los residuos, sin embargo esto no es un inconveniente mayor debido a que este tipo de modelos no asume normalidad en los residuos como lo haría un modelo de regresión lineal.
+
+### Calidad predictiva de los modelos
+
+##### 8. Usando código estándar, evaluar el poder predictivo de los modelos con los datos de las 40 personas que no se incluyeron en su construcción en términos de sensibilidad y especificidad.
+
+##### Evaluacion modelo 1
+```{r}
+umbral_modelo1 <- 0.5
+
+probabilidades_modelo1 <- predict(modelo, test, type = "response")
+predicciones_modelo1 <- sapply(probabilidades_modelo1, function(p) ifelse(p >= umbral_modelo1, "1" , "0"))
+predicciones_modelo1 <- factor(predicciones_modelo1)
+
+# Organizar los valores de probabilidad y etiquetas
+orden_modelo1 <- order(probabilidades_modelo1, decreasing = TRUE)
+probabilidades_ordenadas_modelo1 <- probabilidades_modelo1[orden_modelo1]
+etiquetas_reales_modelo1 <- as.numeric(test$EN)[orden_modelo1]
+predicciones_factor_modelo1 = as.factor(predicciones_modelo1)
+etiquetas_factor_modelo1 = as.factor(etiquetas_reales_modelo1)
+# Configurar vectores para las tasas de positivos verdaderos y falsos positivos.
+tasa_vp_modelo1 <- c(0)
+tasa_fp_modelo1 <- c(0)
+
+# Determinar los valores de Positivos Verdaderos (VP), Negativos Verdaderos (VN), Falsos Positivos (FP) y Falsos Negativos (FN).
+VP_modelo1 <- sum(predicciones_modelo1 == "1" & etiquetas_reales_modelo1 == 1)
+VN_modelo1 <- sum(predicciones_modelo1 == "0" & etiquetas_reales_modelo1 == 0)
+FP_modelo1 <- sum(predicciones_modelo1 == "1" & etiquetas_reales_modelo1 == 0)
+FN_modelo1 <- sum(predicciones_modelo1 == "0" & etiquetas_reales_modelo1 == 1)
+# Generar la matriz de confusión.
+confusion_matrix_modelo1 <- matrix(c(VN_modelo1, FN_modelo1, FP_modelo1, VP_modelo1), nrow = 2, byrow = TRUE, dimnames = list("Predicción" = c("0", "1"), "Etiqueta Real" = c("0", "1")))
+print(confusion_matrix_modelo1)
+
+# Determinar las tasas de positivos verdaderos y falsos positivos.
+for (i in 1:length(probabilidades_ordenadas_modelo1)) {
+  predicciones_modelo1 <- ifelse(probabilidades_ordenadas_modelo1 >= probabilidades_ordenadas_modelo1[i], "1", "0")
+  vp_modelo1 <- sum(predicciones_modelo1 == "1" & etiquetas_reales_modelo1 == 1)
+  fp_modelo1 <- sum(predicciones_modelo1 == "1" & etiquetas_reales_modelo1 == 0)
+  tasa_vp_modelo1 <- c(tasa_vp_modelo1, vp_modelo1/sum(etiquetas_reales_modelo1 == 1))
+  tasa_fp_modelo1 <- c(tasa_fp_modelo1, fp_modelo1/sum(etiquetas_reales_modelo1 == 0))
+}
+
+# Representar gráficamente la curva ROC.
+plot(tasa_fp_modelo1, tasa_vp_modelo1, type = "l", main = "Curva ROC Modelo 1", xlab = "Especificidad", ylab = "Sensibilidad")
+lines(c(0,1), c(0,1), col = "blue")
+
+# Mostrar el área bajo la curva ROC (AUC).
+auc_modelo1 <- sum(diff(tasa_fp_modelo1) * (tasa_vp_modelo1[-length(tasa_vp_modelo1)] + tasa_vp_modelo1[-1])) / 2
+cat("Área bajo la curva ROC Modelo 1: ", round(auc_modelo1, 2), "\n")
+```
+Se puede observar que la curva se aleja considerablemente de la diagonal, lo que sugiere un buen modelo para predecir, el área bajo la curva es bastante cercano a 1 (0.93).
+
+##### Evaluacion modelo 2
+```{r}
+umbral_modelo2 <- 0.5
+
+probabilidades_modelo2 <- predict(modeloMultiple, test, type = "response")
+predicciones_modelo2 <- sapply(probabilidades_modelo2, function(p) ifelse(p >= umbral_modelo2, "1" , "0"))
+predicciones_modelo2 <- factor(predicciones_modelo2)
+
+# Organizar los valores de probabilidad y etiquetas
+orden_modelo2 <- order(probabilidades_modelo2, decreasing = TRUE)
+probabilidades_ordenadas_modelo2 <- probabilidades_modelo2[orden_modelo2]
+etiquetas_reales_modelo2 <- as.numeric(test$EN)[orden_modelo2]
+predicciones_factor_modelo2 = as.factor(predicciones_modelo2)
+etiquetas_factor_modelo2 = as.factor(etiquetas_reales_modelo2)
+# Configurar vectores para las tasas de positivos verdaderos y falsos positivos.
+tasa_vp_modelo2 <- c(0)
+tasa_fp_modelo2 <- c(0)
+
+# Determinar los valores de Positivos Verdaderos (VP), Negativos Verdaderos (VN), Falsos Positivos (FP) y Falsos Negativos (FN).
+VP_modelo2 <- sum(predicciones_modelo2 == "1" & etiquetas_reales_modelo2 == 1)
+VN_modelo2 <- sum(predicciones_modelo2 == "0" & etiquetas_reales_modelo2 == 0)
+FP_modelo2 <- sum(predicciones_modelo2 == "1" & etiquetas_reales_modelo2 == 0)
+FN_modelo2 <- sum(predicciones_modelo2 == "0" & etiquetas_reales_modelo2 == 1)
+# Generar la matriz de confusión.
+confusion_matrix_modelo2 <- matrix(c(VN_modelo2, FN_modelo2, FP_modelo2, VP_modelo2), nrow = 2, byrow = TRUE, dimnames = list("Predicción" = c("0", "1"), "Etiqueta Real" = c("0", "1")))
+print(confusion_matrix_modelo2)
+
+# Determinar las tasas de positivos verdaderos y falsos positivos.
+for (i in 1:length(probabilidades_ordenadas_modelo2)) {
+  predicciones_modelo2 <- ifelse(probabilidades_ordenadas_modelo2 >= probabilidades_ordenadas_modelo2[i], "1", "0")
+  vp_modelo2 <- sum(predicciones_modelo2 == "1" & etiquetas_reales_modelo2 == 1)
+  fp_modelo2 <- sum(predicciones_modelo2 == "1" & etiquetas_reales_modelo2 == 0)
+  tasa_vp_modelo2 <- c(tasa_vp_modelo2, vp_modelo2/sum(etiquetas_reales_modelo2 == 1))
+  tasa_fp_modelo2 <- c(tasa_fp_modelo2, fp_modelo2/sum(etiquetas_reales_modelo2 == 0))
+}
+
+# Representar gráficamente la curva ROC.
+plot(tasa_fp_modelo2, tasa_vp_modelo2, type = "l", main = "Curva ROC Modelo 2", xlab = "Especificidad", ylab = "Sensibilidad")
+lines(c(0,1), c(0,1), col = "blue")
+
+# Mostrar el área bajo la curva ROC (AUC).
+auc_modelo2 <- sum(diff(tasa_fp_modelo2) * (tasa_vp_modelo2[-length(tasa_vp_modelo2)] + tasa_vp_modelo2[-1])) / 2
+cat("Área bajo la curva ROC Modelo 2: ", round(auc_modelo2, 2), "\n")
+```
+Se puede observar que la curva se aleja considerablemente de la diagonal, lo que sugiere un buen modelo, además el área bajo la curva es de 0.94, siendo mayor al área bajo la curva en el modelo 1, por lo que se recomienda el modelo 2 sobre el modelo 1.
+
+
+Referencias:
+
+[1] Corpo, & Corpo. (2021, 28 enero). Descubre dónde acumulas más grasa segun la forma de tu cuerpo - Corpore Clinic. Corpore Clinic - Cirugia Plastica y estética. https://corporeclinic.cl/descubre-donde-acumulas-mas-grasa-segun-la-forma-de-tu-cuerpo/
+
+[2] Ponce, I. G. (2022, 7 diciembre). ¿En qué zonas del cuerpo es más peligroso que haya grasa? CuidatePlus. https://cuidateplus.marca.com/bienestar/2021/04/08/zonas-cuerpo-mas-peligroso-haya-grasa-177590.html#:~:text=La%20grasa%20corporal%20se%20reparte,%2C%20el%20h%C3%ADgado%2C%20los%20ri%C3%B1ones%E2%80%A6

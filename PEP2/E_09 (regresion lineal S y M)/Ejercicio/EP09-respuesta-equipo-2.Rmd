@@ -1,0 +1,183 @@
+---
+title: "EP09-respuesta-equipo-2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ggpubr)
+library(dplyr)
+library(car)
+library(caret)
+```
+
+### Datos
+
+```{r}
+# Leemos el archivo
+data <- read.csv2("EP09 Datos.csv", header = TRUE)
+```
+
+#### 1. Definir la semilla a utilizar, que corresponde a los últimos cuatro dígitos del RUN (sin considerar el dígito verificador) del integrante de menor edad del equipo.
+
+Siguiendo las instrucciones indicadas, la semilla utilizada será 9556.
+
+```{r}
+set.seed(9556)
+```
+
+#### 2. Seleccionar una muestra de 50 mujeres (si la semilla es un número par) o 50 hombres (si la semilla es impar).
+
+Debido a que la semilla (9556) es par se seleccionará una muestra de 50 mujeres.
+
+```{r}
+mujeres <- data[data$Gender == 0, ]
+
+# Seleccionamos las columnas por nombre
+data_seleccionada <- dplyr::select(mujeres, Weight, Chest.depth, Shoulder.Girth, Bitrochanteric.diameter,
+                            Navel.Girth, Hip.Girth, Knee.Girth, Waist.Girth,
+                            Ankles.diameter, Knees.diameter)
+
+muestra <- sample_n(data_seleccionada, 50)
+```
+
+#### 3. Seleccionar de forma aleatoria ocho posibles variables predictoras.
+
+Utilizando un generador aleatorio de números se han seleccionado las siguientes 8 posibles variables predictoras:
+
+- Chest.depth
+- Shoulder.Girth
+- Bitrochanteric.diameter
+- Navel.Girth
+- Hip.Girth
+- Knee.Girth
+- Ankles.diameter
+- Knees.diameter
+
+### Selección de variables
+#### 4. Seleccionar, de las otras variables, una que el equipo considere que podría ser útil para predecir la variable Peso, justificando bien esta selección.
+
+Creemos que Waist.Girth (grosor a la altura de la cintura) podría ser útil para predecir la variable peso debido a que la mayor parte de la grasa corporal se acumula en esta zona, además algunos artículos relacionados con medicina afirman la cintura como un área en la cual se acumula gran parte de la grasa corporal [1] y [2].
+
+### RLS
+#### 5. Usando el entorno R, construir un modelo de regresión lineal simple con el predictor seleccionado en el paso anterior.
+
+```{r}
+modelo <- lm(Weight ~ Waist.Girth, data = muestra)
+
+print(summary(modelo))
+
+# Graficar el modelo.
+p <- ggscatter(muestra, x = "Waist.Girth", y = "Weight", color = "blue", fill = "blue",
+                    xlab = "Grosor de la cintura" , ylab = "Peso" )
+
+p <- p + geom_smooth(method = lm, se = FALSE, colour = "red")
+print(p)
+
+# Crear gráficos para evaluar el modelo.
+plot(modelo)
+```
+
+### RLM
+#### 6. Usando herramientas para la exploración de modelos del entorno R, buscar entre dos y cinco predictores de entre las variables seleccionadas al azar en el punto 3, para agregar al modelo de regresión lineal simple obtenido en el paso 5.
+
+```{r}
+# P6.
+# Ajustamos un modelo completo
+completo <- lm(Weight ~ ., data = muestra)
+
+# Usamos el método hacia adelante que viene incluído en la función step. Le entregamos como
+# modelo base el modelo definido para RLS y se prueban todas las variables de las 8 elegidas
+# de forma aleatoria.
+adelante <- step(modelo, scope = list(upper = completo), direction = "forward", trace = 0)
+print(summary(adelante))
+plot(adelante)
+```
+
+### Confiabilidad de los modelos
+#### 7. Evaluar los modelos y “arreglarlos” en caso de que tengan algún problema con las condiciones que deben cumplir.
+
+A continuación se comprobarán las condiciones que se deben verificar para la RLM:
+
+```{r}
+# Comprobar independencia de los residuos.
+cat ("Prueba de Durbin - Watson para autocorrelaciones")
+cat ("entre errores :\ n ")
+print(durbinWatsonTest(adelante))
+```
+
+Como p=0.542, se falla en rechazar la hipótesis nula de la prueba, la cual permite determinar que los residuos son independientes.
+
+
+```{r}
+#Comprobar normalidad de los residuos
+cat ("\ nPrueba de normalidad para los residuos:\n" )
+print(shapiro.test(adelante$residuals))
+
+# Comprobar homocedasticidad de los residuos.
+cat("Prueba de homocedasticidad para los residuos :\n")
+print(ncvTest(adelante))
+
+# Comprobamos la multicolinealidad entre las variables
+vifs <- vif(adelante)
+vifs
+print(1/vifs)
+print(mean(vifs))
+```
+
+En general los valores VIFS no parecen ser preocupantes, sin embargo, en pos de
+buscar un mejor modelo, proponemos eliminar la variable Ankles.diameter debido a que tiene un valor p de 0.06547, que es mayor que el nivel de significancia típico de 0.05. Esto sugiere que Ankles.diameter no es estadísticamente significativo a un nivel de confianza del 95%. Se evalua un nuevo modelo sin esta variable, realizando el llamado:
+
+```{r}
+adelante <- update(adelante, . ~ . - Ankles.diameter)
+print(summary(adelante))
+```
+
+Se puede observar que el nuevo modelo al quitar la variable predictora tiene un menor
+$R^2$ y es igual a $R_{nuevo}^2=0.9231 < 0.9363=R_{antiguo}^2$, por lo que nos quedamos con el modelo anterior aunque la variable Ankles.diameter no sea tan influyente en el modelo.
+
+
+### Calidad predictiva de los modelos
+#### 8. Evaluar el poder predictivo del modelo en datos no utilizados para construirlo (o utilizando validación cruzada).
+
+```{r}
+# Configuramos el control de validación cruzada
+control <- trainControl(method = "cv", number = 10)
+
+# Ajustamos el modelo usando validación cruzada de 10 pliegues
+# El modelo 'adelante' ya ha sido seleccionado con las variables predictoras correctas
+modelo_cv <- train(Weight ~ Waist.Girth + Knee.Girth + Shoulder.Girth + Hip.Girth + Ankles.diameter,
+                   data = muestra,
+                   method = "lm",
+                   trControl = control)
+
+# Revisamos los resultados de la validación cruzada
+print(modelo_cv)
+
+# Hacer predicciones para el conjunto de entrenamiento
+predicciones_entrenamiento <- predict(modelo_cv, newdata = muestra)
+
+# Calcular error cuadrado promedio para el conjunto de entrenamiento
+error_entrenamiento <- muestra$Weight - predicciones_entrenamiento
+mse_entrenamiento <- mean(error_entrenamiento^2)
+cat("MSE para el conjunto de entrenamiento:", mse_entrenamiento, "\n")
+
+# Crear un conjunto de prueba (puedes ajustar esto según tus datos)
+conjunto_prueba <- data_seleccionada[51:nrow(data_seleccionada), ]
+
+# Hacer predicciones para el conjunto de prueba
+predicciones_prueba <- predict(modelo_cv, newdata = conjunto_prueba)
+
+# Calcular error cuadrado promedio para el conjunto de prueba
+error_prueba <- conjunto_prueba$Weight - predicciones_prueba
+mse_prueba <- mean(error_prueba^2)
+cat("MSE para el conjunto de prueba:", mse_prueba, "\n")
+
+```
+
+El error cuadrático medio (MSE) para el conjunto de entrenamiento es MSEe=5.456093, y para el conjunto de prueba, MSEp =7.835206 .Estos últimos valores son muy parecidos, por lo que este modelo sí podría ser generalizable
+
+Referencias:
+
+[1] Corpo, & Corpo. (2021, 28 enero). Descubre dónde acumulas más grasa segun la forma de tu cuerpo - Corpore Clinic. Corpore Clinic - Cirugia Plastica y estética. https://corporeclinic.cl/descubre-donde-acumulas-mas-grasa-segun-la-forma-de-tu-cuerpo/
+
+[2] Ponce, I. G. (2022, 7 diciembre). ¿En qué zonas del cuerpo es más peligroso que haya grasa? CuidatePlus. https://cuidateplus.marca.com/bienestar/2021/04/08/zonas-cuerpo-mas-peligroso-haya-grasa-177590.html#:~:text=La%20grasa%20corporal%20se%20reparte,%2C%20el%20h%C3%ADgado%2C%20los%20ri%C3%B1ones%E2%80%A6

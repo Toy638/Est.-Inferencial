@@ -1,0 +1,506 @@
+---
+title: "EP-08-respuesta-equipo3"
+output: html_document
+date: "2023-11-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ez)
+library(boot)
+###############DEFINICION DE FUNCIONES###############
+
+obtiene_permutacion <- function(i , muestra_1 , muestra_2) {
+  n_1 <- length( muestra_1)
+  combinada <- c( muestra_1 , muestra_2)
+  n <- length( combinada )
+  permutacion <- sample( combinada , n , replace = FALSE )
+  nueva_1 <- permutacion[1: n_1]
+  nueva_2 <- permutacion[( n_1+1) : n ]
+  return ( list( nueva_1 , nueva_2) )
+}
+
+
+calcular_diferencia <- function( muestras , FUN ) {
+  muestra_1 <- muestras[[1]]
+  muestra_2 <- muestras[[2]]
+  diferencia <- FUN( muestra_1) - FUN(muestra_2)
+  return ( diferencia )
+}
+
+calcular_valor_p <- function( distribucion , valor_observado ,
+                               repeticiones , alternative ) {
+  if ( alternative == "two.sided" ) {
+    numerador <- sum( abs( distribucion ) > abs( valor_observado ) ) + 1
+    denominador <- repeticiones + 1
+    valor_p <- numerador / denominador
+  }
+  else if ( alternative == "greater" ) {
+    numerador <- sum( distribucion > valor_observado ) + 1
+    denominador <- repeticiones + 1
+    valor_p <- numerador / denominador
+  }
+  else {
+    numerador <- sum( distribucion < valor_observado ) + 1
+    denominador <- repeticiones + 1
+    valor_p <- numerador / denominador
+  }
+  
+  return ( valor_p )
+}
+
+# Función para graficar una distribución .
+# Argumentos:
+# - distribucion: distribución nula del estadístico de interés .
+# - ...: otros argumentos a ser entregados a gghistogram y ggqqplot .
+graficar_distribucion <- function( distribucion , ...) {
+  observaciones <- data.frame( distribucion )
+  
+  histograma <- gghistogram( observaciones , x = "distribucion" ,
+                             xlab = "Estadístico de interés" ,
+                             ylab = "Frecuencia" , bins = 30 , ...)
+  
+  qq <- ggqqplot( observaciones , x = "distribucion" , ...)
+  
+  # Crear una única figura con todos los gráficos de dispersión .
+  figura <- ggarrange( histograma , qq , ncol = 2 , nrow = 1)
+  print ( figura )
+}
+
+# Función para hacer la prueba de permutaciones.
+# Argumentos :
+# - muestra_1 , muestra_2: vectores numéricos con las muestras a comparar .
+# - repeticiones : cantidad de permutaciones a realizar .
+# - FUN : función del estadístico E para el que se calcula la diferencia .
+# - alternative : tipo de hip ó tesis alternativa . " two . sided " para
+# hipótesis bilateral , " greater " o " less " para hipó tesis unilaterales .
+# - plot : si es TRUE , construye el gráfico de la distribución generada .
+# - ...: otros argumentos a ser entregados a graficar_distribucion .
+contrastar_hipotesis_permutaciones <- function( muestra_1 , muestra_2 ,
+                                                 repeticiones , FUN ,
+                                                 alternative , plot ) {
+  cat( "Prueba de permutaciones \n\n" )
+  cat( "Hipótesis alternativa :" , alternative , "\n" )
+  observado <- calcular_diferencia( list( muestra_1 , muestra_2) , FUN )
+  cat( "Valor observado : " , observado , "\n" )
+  n_1 <- length( muestra_1)
+  
+  # Generar permutaciones .
+  permutaciones <- lapply(1: repeticiones , obtiene_permutacion , muestra_1 ,
+                           muestra_2)
+  # Generar la distribuci ó n .
+  distribucion <- sapply( permutaciones , calcular_diferencia , FUN )
+  
+  # Graficar la distribuci ó n .
+  if ( plot ) {
+    graficar_distribucion( distribucion )
+  }
+  
+  # Calcular el valor p .
+  valor_p <- calcular_valor_p( distribucion , observado , repeticiones ,
+                                alternative )
+  
+  cat( "Valor p : " , valor_p, "\n" )
+}
+```
+
+## Pregunta 1
+
+¿Es similar la cantidad de hogares en los que se tiene en uso y funcionamiento Smart TV o TV con internet (variable r16e) entre habitantes de la Región Metropolitana y la Región de Coquimbo (variable region), específicamente entre personas de 18 a 30 años de edad (variable edad)?
+
+
+H0: La cantidad promedio de hogares en los que se tiene en uso y funcionamiento Smart TV o TV con internet en la región metropolitana es igual a la cantidad promedio de hogares en los que se tiene en uso y funcionamiento Smart TV o TV con internet en la región de Coquimbo.
+
+Ha: La cantidad promedio de hogares en los que se tiene en uso y funcionamiento Smart TV o TV con internet en la región metropolitana
+es dintinta a la cantidad promedio de hogares en los que se tiene en uso y funcionamiento Smart TV o TV con internet en la región de Coquimbo.
+
+Denotando: 
+
+μ_mm: cantidad promedio de hogares en los que se tiene en uso y funcionamiento Smart TV o TV con internet en la región metropolitana.
+
+μ_mc: cantidad promedio de hogares en los que se tiene en uso y funcionamiento Smart TV o TV con internet en la región de Coquimbo.
+
+Se plantean las hipótesis en lenguaje matemático:
+
+H0: μ_mm - μ_mc = 0
+
+Ha: μ_mm - μ_mc != 0
+
+Se trabajará con un nivel de significancia de 0.05.
+
+```{r}
+archivo = read.csv2("EP08 Datos CASEN 2017.csv", fileEncoding = "latin1")
+
+#Trabajo con los datos
+datos1 <- archivo %>% filter(edad > 18 & edad < 30)
+datos1 <- datos1 %>% filter(r16e == "Sí" | r16e == "No")
+
+datos_metropolitana <-datos1 %>% filter(region == "Región Metropolitana de Santiago")
+datos_coquimbo <- datos1 %>% filter(region == "Región de Coquimbo")
+
+set.seed(123)
+indices1 <- sample(1:424, 140) 
+indices2 <- sample(1:189, 140) 
+muestra_metropolitana <- ifelse(datos1$r16e[indices1] == "Sí", 1, 0)
+muestra_coquimbo <- ifelse(datos1$r16e[indices2] == "Sí", 1, 0)
+R = 5000
+
+# Hacer pruebas de permutaciones para la media y la varianza. contrastar_hipotesis_permutaciones(a, b, repeticiones = R, FUN = mean, alternative = "two.sided", plot = TRUE, color = "blue", fill = "blue") 
+contrastar_hipotesis_permutaciones(muestra_metropolitana ,muestra_coquimbo , repeticiones = R, FUN = mean,
+                                    alternative = "two.sided", plot = FALSE)
+```
+
+
+Al realizar el contraste de hipótesis se obtuvo como p valor 0.6214757 lo cual es mayor que el nivel de significancia elegido, por lo tanto se falla en rechazar la hipótesis nula. En consecuencia, se puede determinar con un 95% de confianza que la cantidad promedio de hogares en los que se tiene en uso y funcionamiento Smart TV o TV con internet entre habitantes de la Región Metropolitana y la Región de Coquimbo, específicamente entre personas de 18 a 30 años de edad es igual.
+
+## Pregunta 2
+
+La cantidad de hijos nacidos vivos (s4) promedio por persona es similar entre mujeres de 20 a 25, de 26 a 30, 40 a 45 y 46 a 50 años(edad)?
+
+Formulamos las hipótesis:
+
+ H0: La cantidad promedio de hijos nacidos vivos es similar entre mujeres de 20 a 25, de 26 a 30, 40 a 45 y 46 a 50 años.
+ 
+ HA: La cantidad promedio de hijos nacidos vivos es distinta entre mujeres de 20 a 25, de 26 a 30, 40 a 45 y 46 a 50 años.
+
+Denotando: 
+
+μ_1: La cantidad promedio de hijos nacidos vivos es similar entre mujeres de 20 a 25.
+
+μ_2: La cantidad promedio de hijos nacidos vivos es similar entre mujeres de 26 a 30.
+
+μ_3: La cantidad promedio de hijos nacidos vivos es similar entre mujeres de 40 a 45.
+
+μ_4: La cantidad promedio de hijos nacidos vivos es similar entre mujeres de 46 a 50.
+
+Se plantean las hipótesis en lenguaje matemático:
+
+H0: μ_1 = μ_2 = μ_3 = μ_4
+
+Ha: Al menos una de las medias μ_i es diferente de las demás, donde i=1,2,3,4.
+
+
+```{r}
+datos2_20_25 <- archivo %>% filter(edad > 20 & edad < 25 & sexo == "Mujer")
+datos2_26_30 <- archivo %>% filter(edad > 26 & edad < 30 & sexo == "Mujer")
+datos2_40_45 <- archivo %>% filter(edad > 40 & edad < 45 & sexo == "Mujer")
+datos2_46_50 <- archivo %>% filter(edad > 46 & edad < 50 & sexo == "Mujer")
+
+set.seed(321)
+
+indices1 <- sample(1:1551, 250)
+indices2 <- sample(1:1476, 250) 
+indices3 <- sample(1:2084, 250)
+indices4 <- sample(1:1597, 250)
+
+muestra1 <- datos2_20_25$s4[indices1]
+muestra2 <- datos2_26_30$s4[indices2]
+muestra3 <- datos2_40_45$s4[indices2]
+muestra4 <- datos2_46_50$s4[indices2]
+
+datos_combinados <- data.frame(
+  Edad = rep(c("20-25", "26-30", "40-45", "46-50"), each = 250),
+  Hijos = c(muestra1, muestra2, muestra3, muestra4)
+)
+
+datos_combinados$Edad <- factor(datos_combinados$Edad) 
+datos_combinados$instancia <- factor(1:nrow(datos_combinados))
+
+media_hijos <- mean(datos_combinados$Hijos)
+
+valor_obs <- ezANOVA(data = datos_combinados,dv= Hijos, between = Edad,wid= instancia, return_aov = TRUE)
+
+B <- 3999
+
+media <- function(valores, i){
+  mean(valores[i])
+}
+
+distribucion_20_25 <- boot(muestra1, statistic = media, R=B )
+distribucion_26_30 <- boot(muestra2, statistic = media, R=B )
+distribucion_40_45 <- boot(muestra3, statistic = media, R=B )
+distribucion_46_50 <- boot(muestra4, statistic = media, R=B )
+
+muestra1Boot <- c(distribucion_20_25$data)
+muestra2Boot <- c(distribucion_26_30$data)
+muestra3Boot <- c(distribucion_40_45$data)
+muestra4Boot <- c(distribucion_46_50$data)
+
+datos_combinadosBoot <- data.frame(
+  Edad = rep(c("20-25", "26-30", "40-45", "46-50"), each = 250),
+  Hijos = c(muestra1Boot, muestra2Boot, muestra3Boot, muestra4Boot)
+)
+datos_combinados$Edad <- factor(datos_combinados$Edad)
+datos_combinadosBoot$instancia = factor(1:nrow(datos_combinadosBoot))
+
+valor_observadoBoot <- ezANOVA(data = datos_combinadosBoot,dv= Hijos, between = Edad,wid= instancia, return_aov = TRUE)
+print(summary(valor_observadoBoot$aov))
+sprintf("Estadístico F con Bootstrap y sin BootStrap")
+print(valor_observadoBoot$ANOVA$F)
+print(valor_obs$ANOVA$F)
+```
+
+Como se obtiene un p value menor que 0.05 (se rechaza la hipótesis nula en favor de la alternativa) se hace el procedimiento posthoc:
+
+```{r}
+post_hoc = pairwise.t.test(datos_combinadosBoot$Hijos, datos_combinadosBoot$Edad, p.adj = "holm", paired = FALSE, conf.level= .95)
+print(post_hoc)
+```
+
+Al realizar el procedimiento post-hoc de Holm, se puede observar que existe un pvalor mayor al nivel de significancia considerado, entre los grupos de 20-25 años y 26-30 años, lo cual permite concluir que no hubo evidencia estadística suficiente para rechazar la hipótesis nula, es decir, que la cantidad promedio de hijos nacidos vivos es similar entre mujeres de estos dos grupos etarios. Mientras que entre el resto de grupos se rechazó la hipótesis nula en favor de la alternativa, es decir, que existen diferencias significativas en la cantidad  promedio de hijos nacidos vivos entre mujeres de dichos grupos.
+
+
+******************
+
+
+## Pregunta 2
+
+Pregunta 2
+Propongan una pregunta de investigación original, que involucre la comparación de las medias de más de dos grupos independientes. Fijando una semilla distinta a la anterior, seleccionen una muestra aleatoria de hogares (200 < n < 300) y respondan la pregunta propuesta utilizando bootstrapping. Solo por ejercicio académico, aplique un análisis post-hoc con bootstrapping aunque este no sea necesario.
+
+En este caso, consideraremos la pregunta: ¿es igual el ingreso per cápita en las regiones de Atacama, Coquimbo y del Maule? Esta pregunta requiere contrastar las medias de 3 grupos independientes. Al haber más de dos medias, no es posible comparar directamente sus diferencias. Así, lo más conveniente en este caso es utilizar el estadístico F para evaluar su igualdad.
+Filtremos los datos y obtengamos la muestra como se solicita.
+```{r}
+n2 <- 275
+set.seed(572)
+regiones <- c("Región de Coquimbo", "Región de Atacama", "Región del Maule")
+muestra2 <- datos %>% filter(region %in% regiones) %>% droplevels() %>%
+  mutate(region = recode(region, "Región de Atacama" = "Atacama")) %>%
+  mutate(region = recode(region, "Región de Coquimbo" = "Coquimbo")) %>%
+  mutate(region = recode(region, "Región del Maule" = "Maule")) %>%
+  select(ytotcorh, numper, region) %>%
+  mutate(ypercap = ytotcorh/numper, .keep = "unused") %>%
+  sample_n(n2)
+Formulamos las hipótesis:
+```
+
+H0: En promedio, el ingreso per cápita es igual en las regiones de Atacama, Coquimbo y el Maule.
+HA: En promedio, el ingreso per cápita es distinto en las regiones de Atacama, Coquimbo y el Maule.
+
+Matemáticamente: si μA, μC y μMrepresentan las medias de los ingresos per cápita de las regiones de Atacama, Coquimbo y el Maule, entonces:
+
+H0: μA=μC=μM.
+HA: ∃al menos un par a,b∈{A,C,M}∣μa≠μb .
+
+Revisemos el tamaño de las muestras de observaciones en cada grupo.
+```{r}
+print(summary(muestra2[["region"]]))
+```
+##  Atacama Coquimbo    Maule 
+##       58       74      143
+Una complicación extra, puesto que las muestras tienen tamaños distintos y debemos mantener esos tamaños en el remuestreo. Separamos los índices de cada región con este objetivo en mente.
+```{r}
+iAtacama <- which(muestra2[["region"]] == "Atacama")
+iCoquimbo <- which(muestra2[["region"]] == "Coquimbo")
+iMaule <- which(muestra2[["region"]] == "Maule")
+```
+
+Revisemos los datos.
+```{r}
+p2 <- ggboxplot(muestra2, x = "region", y = "ypercap", fill = "region")
+p2 <- p2 + xlab("Región") + ylab("Ingreso per cápita")
+print(p2)
+```
+
+Podemos ver que los datos, además de estar desbalanceados, parecen no cumplir con la condición de heterocedasticidad y presentan numerosos valores atípicos. Este hecho es razón suficiente para ¡utilizar remuestreo!
+Definimos una función que calcula el estadístico de interés que, como se dijo, corresponde al estadístico F usado por ANOVA para muestras independientes.
+```{r}
+get.F <- function(df, iA, iC, iM, verbose = FALSE)
+{
+  # Armamos la matriz de datos con los índices recibidos 
+  i <- c(iA, iC, iM)
+  ids <- factor(1:length(i))
+  datos <- cbind(id = ids, df[i, ])
+  dd <<- datos
+  
+  ez <- ezANOVA(datos, ypercap, id, between = region, type = 2)
+  if(verbose)
+    print(ez)
+  return(ez[["ANOVA"]][["F"]])
+}
+```
+Obtenemos el estadístico para la muestra original.
+```{r}
+F.obs <- get.F(muestra2, iAtacama, iCoquimbo, iMaule, TRUE)
+```
+## $ANOVA
+##   Effect DFn DFd        F        p p<.05        ges
+## 1 region   2 272 4.557016 0.011307     * 0.03242112
+## 
+## $`Levene's Test for Homogeneity of Variance`
+##   DFn DFd          SSn          SSd        F         p p<.05
+## 1   2 272 255519071781 1.913278e+13 1.816286 0.1645955
+
+Debemos recordar que, a diferencia del caso anterior con permutaciones, con bootstrapping (al remuestrear con reemplazo la muestra original) las remuestras no representan la hipótesis nula. Cuando teníamos dos muestras, podíamos recentrar la distribución bootstrap en el valor nulo. Pero ¿cómo hacemos esto con el estadístico F?
+Para ello debemos considerar que si la hipótesis nula se cumple, los tres grupos tienen las mismas medias y varianzas. Con más de dos grupos, es más fácil hacer estos ajustes antes del remuestreo. Para ello, nos basamos en las ideas propuestas por Fisher & Hall (1990), Hall & Wilson (1991) y Martin (2007).
+Primero vamos a obtener las medidas generales (pooled).
+```{r}
+media.gral <- mean(muestra2[["ypercap"]])
+sd.gral <- sd(muestra2[["ypercap"]])
+```
+Luego obtenemos las medidas por grupo (por región en este caso):
+```{r}
+grupos <- muestra2 %>%
+  group_by(region) %>%
+  summarise(media = mean(ypercap), sd = sd(ypercap)) %>%
+  as.data.frame()
+```
+Ahora desplazamos los valores vistos para que los tres grupos tengan la misma media e igual varianza (en rigor, desviación estándar).
+```{r}
+muestra2b <- muestra2
+muestra2b[iAtacama, "ypercap"] <- media.gral +
+  (muestra2b[iAtacama, "ypercap"] - grupos[1, "media"]) *
+  (sd.gral / grupos[1, "sd"])
+muestra2b[iCoquimbo, "ypercap"] <- media.gral +
+  (muestra2b[iCoquimbo, "ypercap"] - grupos[2, "media"]) *
+  (sd.gral / grupos[2, "sd"])
+muestra2b[iMaule, "ypercap"] <- media.gral +
+  (muestra2b[iMaule, "ypercap"] - grupos[3, "media"]) *
+  (sd.gral / grupos[3, "sd"])
+```
+Generamos las remuestras muestreando con reemplazo los índices de los datos de cada grupo.
+
+```{r}
+B <- 2999
+set.seed(573)
+re.iAtacama <- lapply(1:B, function(i) sample(iAtacama, replace = TRUE))
+re.iCoquimbo <- lapply(1:B, function(i) sample(iCoquimbo, replace = TRUE))
+re.iMaule <- lapply(1:B, function(i) sample(iMaule, replace = TRUE))
+```
+Obtenemos la distribución bootstrapping remuestreando cada región por separado.
+```{r}
+cat("Remuestreando, por favor espere...\n")
+## Remuestreando, por favor espere...
+get.F.boot <- function(i, df, verbose = FALSE)
+  get.F(df, re.iAtacama[[i]], re.iCoquimbo[[i]], re.iMaule[[i]], verbose)
+distribucion <- sapply(1:B, function(i) get.F.boot(i, muestra2b, B < 10))
+Revisemos cómo se ve esta distribución respecto del valor observado en la muestra original.
+
+p2 <- gghistogram(data.frame(distribucion), "distribucion",
+                  xlab = "Estadístico F", ylab = "Frecuencia",
+                  bins = 30, fill = "blue")
+p2 <- p2 + geom_vline(xintercept = F.obs, colour="red")
+print(p2)
+```
+
+Calculemos el intervalo de 95% confianza y el valor p para una prueba bilateral (usando valor absoluto).
+```{r}
+ci2 <- quantile(distribucion, c(0.025, 0.975))
+numerador2 <- sum(abs(distribucion) > abs(F.obs))
+valor_p2 <- (numerador2 + 1) / (B + 1)
+```
+Mostramos el resultado.
+```{r}
+cat("95% CI: [", round(ci2[1], 3), ", ", round(ci2[2], 3), "]\n", sep = "")
+## 95% CI: [0.034, 3.837]
+cat("P-valor:", round(valor_p2, 3))
+## P-valor: 0.015
+```
+Observamos que si la hipótesis nula es correcta, los estadísticos F que observaríamos estarían en el intervalo [0,034;3,837] con 95% confianza. Como el estadístico F observado (en la muestra original) fue F=4,557 , que tiene una baja probabilidad de ser encontrado (p=0,015
+), se rechaza la hipótesis nula en favor de la alternativa. Concluimos entonces, con 95% confianza, que el ingreso per cápita promedio no es igual en las regiones estudiadas. Corresponde, entonces, hacer un análisis post-hoc.
+Por conveniencia, haremos comparación entre pares de regiones usando las mismas remuestras que usamos en la prueba ómnibus. Al analizar pares de regiones, podemos usar la diferencia de las medias como estadístico de interés.
+
+Escribamos la típica función que calcula esta diferencia.
+```{r}
+get.dif.medias <- function(df, i1, i2)
+{
+  media1 <- mean(df[i1, "ypercap"]) 
+  media2 <- mean(df[i2, "ypercap"])
+  return(media1 - media2)
+}
+```
+Obtenemos las diferencias observadas entre cada par de regiones.
+```{r}
+dif.obs.A.C <- get.dif.medias(muestra2, iAtacama, iCoquimbo)
+dif.obs.A.M <- get.dif.medias(muestra2, iAtacama, iMaule)
+dif.obs.C.M <- get.dif.medias(muestra2, iCoquimbo, iMaule)
+cat("Atacama - Coquimbo:", round(dif.obs.A.C), "\n")
+## Atacama - Coquimbo: 128427
+cat("Atacama - Maule:", round(dif.obs.A.M), "\n")
+## Atacama - Maule: 134652
+cat("Coquimbo - Maule:", round(dif.obs.C.M), "\n")
+## Coquimbo - Maule: 6225
+```
+
+Obtenemos las distribuciones bootstrap para cada diferencia.
+```{r}
+dist.boot.dif.A.C <- sapply(1:B,
+                            function(i) get.dif.medias(muestra2b,
+                                                       re.iAtacama[[i]],
+                                                       re.iCoquimbo[[i]]))
+dist.boot.dif.A.M <- sapply(1:B,
+                            function(i) get.dif.medias(muestra2b,
+                                                       re.iAtacama[[i]],
+                                                       re.iMaule[[i]]))
+dist.boot.dif.C.M <- sapply(1:B,
+                            function(i) get.dif.medias(muestra2b,
+                                                       re.iCoquimbo[[i]],
+                                                       re.iMaule[[i]]))
+```
+
+Y las graficamos (en miles de pesos).
+
+```{r}
+p3a <- gghistogram(data.frame(Diferencia = dist.boot.dif.A.C / 1000),
+                   "Diferencia", title = "Atacama-Coquimbo", xlab = "Diferencia (miles de $)",
+                   bins = 30, fill = "blue")
+p3a <- p3a + geom_vline(xintercept = dif.obs.A.C / 1000, colour="red")
+p3b <- gghistogram(data.frame(Diferencia = dist.boot.dif.A.M / 1000),
+                   "Diferencia", title = "Atacama-Maule", xlab = "Diferencia (miles de $)",
+                   bins = 30, fill = "blue")
+p3b <- p3b + geom_vline(xintercept = dif.obs.A.M / 1000, colour="red")
+p3c <- gghistogram(data.frame(Diferencia = dist.boot.dif.C.M / 1000),
+                   "Diferencia", title = "Coquimbo-Maule", xlab = "Diferencia (miles de $)",
+                   bins = 30, fill = "blue")
+p3c <- p3c + geom_vline(xintercept = dif.obs.C.M / 1000, colour="red")
+p3 <- ggarrange(p2, p3a, p3b, p3c, nrow = 2, ncol = 2)
+print(p3)
+```
+
+En los gráficos queda bastante claro dónde están las diferencias, pero para seguir con el ejercicio, calculamos los p-valores ajustados.
+```{r}
+valor_p.A.C <- (sum(abs(dist.boot.dif.A.C) > abs(dif.obs.A.C)) + 1) / (B + 1)
+valor_p.A.M <- (sum(abs(dist.boot.dif.A.M) > abs(dif.obs.A.M)) + 1) / (B + 1)
+valor_p.C.M <- (sum(abs(dist.boot.dif.C.M) > abs(dif.obs.C.M)) + 1) / (B + 1)
+valores_p.adj <- p.adjust(c(valor_p.A.C, valor_p.A.M, valor_p.C.M), method = "BH")
+cat("Atacama - Coquimbo:", round(valores_p.adj[1], 3), "\n")
+## Atacama - Coquimbo: 0.02
+cat("Atacama - Maule:", round(valores_p.adj[2],3), "\n")
+## Atacama - Maule: 0.02
+cat("Coquimbo - Maule:", round(valores_p.adj[3], 3), "\n")
+## Coquimbo - Maule: 0.885
+```
+También podemos usar las remuestras para estimar los intervalos de confianza de las diferencias de las medias de ingresos per cápita entre las regiones observadas en en estudio.
+```{r}
+dist.boot.dif.obs.A.C <- sapply(1:B,
+                                 function(i) get.dif.medias(muestra2,
+                                                            re.iAtacama[[i]],
+                                                            re.iCoquimbo[[i]]))
+dist.boot.dif.obs.A.M <- sapply(1:B,
+                                 function(i) get.dif.medias(muestra2,
+                                                            re.iAtacama[[i]],
+                                                            re.iMaule[[i]]))
+dist.boot.dif.obs.C.M <- sapply(1:B,
+                                 function(i) get.dif.medias(muestra2,
+                                                            re.iCoquimbo[[i]],
+                                                            re.iMaule[[i]]))
+
+ci.dif.obs.A.C <- quantile(dist.boot.dif.obs.A.C, c(0.025, 0.975))
+ci.dif.obs.A.M <- quantile(dist.boot.dif.obs.A.M, c(0.025, 0.975))
+ci.dif.obs.C.M <- quantile(dist.boot.dif.obs.C.M, c(0.025, 0.975))
+
+cat("Intervalos de 95% confianza:\n")
+## Intervalos de 95% confianza:
+cat("Atacama - Coquimbo: [", round(ci.dif.obs.A.C[1], 3), ", ", round(ci.dif.obs.A.C[2], 3), "]\n)", sep = "")
+## Atacama - Coquimbo: [26630.42, 242873.9]
+## )
+cat("Atacama - Maule   : [", round(ci.dif.obs.A.M[1], 3), ", ", round(ci.dif.obs.A.M[2], 3), "]\n)", sep = "")
+## Atacama - Maule   : [29800.36, 248522.9]
+## )
+cat("Coquimbo - Maule  : [", round(ci.dif.obs.C.M[1], 3), ", ", round(ci.dif.obs.C.M[2], 3), "]\n)", sep = "")
+## Coquimbo - Maule  : [-61347.28, 68950.19]
+## )
+```
+
+En base al procedimiento post-hoc, podemos concluir con 95% de confianza que no hay diferencias significativas en el ingreso per cápita promedio de las regiones de Coquimbo y del Maule (95% IC:[−$61.347,$68.950],p=0,885 ), pero que estos son significativamente menores al ingreso per cápita promedio de la región de Atacama (Coquimbo: 95% IC:[$26.630,$242.873],p=0,020 ; Maule: 95% IC:[$29.800,$248.522],p=0,020)
